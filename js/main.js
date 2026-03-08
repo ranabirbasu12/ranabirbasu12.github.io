@@ -48,7 +48,7 @@ function initAbout() {
       ease: 'power2.out',
       scrollTrigger: {
         trigger: '.about',
-        start: 'top 80%',
+        start: 'top 92%',
         toggleActions: 'play none none none'
       }
     }
@@ -69,7 +69,7 @@ function initExperience() {
         ease: 'power2.out',
         scrollTrigger: {
           trigger: item,
-          start: 'top 85%',
+          start: 'top 92%',
           toggleActions: 'play none none none'
         }
       }
@@ -90,7 +90,7 @@ function initEducation() {
       ease: 'power2.out',
       scrollTrigger: {
         trigger: '.education__grid',
-        start: 'top 80%',
+        start: 'top 92%',
         toggleActions: 'play none none none'
       }
     }
@@ -110,7 +110,7 @@ function initHighlights() {
       ease: 'power2.out',
       scrollTrigger: {
         trigger: '.highlights__grid',
-        start: 'top 80%',
+        start: 'top 92%',
         toggleActions: 'play none none none'
       }
     }
@@ -128,11 +128,32 @@ function initContact() {
       ease: 'power2.out',
       scrollTrigger: {
         trigger: '.contact',
-        start: 'top 80%',
+        start: 'top 92%',
         toggleActions: 'play none none none'
       }
     }
   );
+}
+
+// ---- Section headings ----
+
+function initSectionHeadings() {
+  document.querySelectorAll('.section-heading').forEach((heading) => {
+    gsap.fromTo(heading,
+      { opacity: 0, y: 20 },
+      {
+        opacity: 1,
+        y: 0,
+        duration: 0.6,
+        ease: 'power2.out',
+        scrollTrigger: {
+          trigger: heading,
+          start: 'top 92%',
+          toggleActions: 'play none none none'
+        }
+      }
+    );
+  });
 }
 
 // ---- Initialize ----
@@ -140,6 +161,7 @@ function initContact() {
 document.addEventListener('DOMContentLoaded', () => {
   initHero();
   initAbout();
+  initSectionHeadings();
   initExperience();
   initEducation();
   initHighlights();
