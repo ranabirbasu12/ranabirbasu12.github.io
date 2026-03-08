@@ -17,14 +17,13 @@
   --text-muted: #888;
   --accent: #c9a84c;
   --accent-glow: rgba(201, 168, 76, 0.15);
-  --timeline-line: rgba(201, 168, 76, 0.3);
 
   --font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   --fs-hero: clamp(3rem, 8vw, 7rem);
-  --fs-h2: clamp(1.75rem, 4vw, 3rem);
-  --fs-body: clamp(1rem, 1.5vw, 1.25rem);
+  --fs-h2: clamp(1.5rem, 3vw, 2rem);
+  --fs-body: clamp(1rem, 1.5vw, 1.125rem);
   --fs-small: clamp(0.75rem, 1vw, 0.875rem);
-  --fs-label: clamp(1.25rem, 2vw, 1.75rem);
+  --fs-label: clamp(1.125rem, 1.8vw, 1.5rem);
   --lh-body: 1.7;
 
   --section-pad: clamp(4rem, 10vw, 8rem);
@@ -67,6 +66,16 @@ img {
   color: var(--bg);
 }
 
+.section-heading {
+  font-size: var(--fs-h2);
+  font-weight: 600;
+  margin-bottom: 2.5rem;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: var(--fs-small);
+}
+
 /* ============================================
    HERO
    ============================================ */
@@ -101,12 +110,20 @@ img {
   width: 0.3em;
 }
 
-.hero__tagline {
+.hero__title {
   font-size: clamp(1rem, 2vw, 1.375rem);
   color: var(--text-muted);
   font-weight: 300;
-  min-height: 2em;
   letter-spacing: 0.01em;
+  margin-bottom: 0.5rem;
+}
+
+.hero__subtitle {
+  font-size: var(--fs-small);
+  color: var(--text-muted);
+  font-weight: 400;
+  letter-spacing: 0.05em;
+  opacity: 0.6;
 }
 
 .hero__scroll-indicator {
@@ -142,73 +159,150 @@ img {
 }
 
 /* ============================================
-   ARC (TIMELINE)
+   ABOUT
    ============================================ */
 
-.arc {
-  position: relative;
+.about {
   padding: var(--section-pad) 2rem;
   max-width: var(--content-max);
   margin: 0 auto;
 }
 
-.arc__timeline-line {
-  position: absolute;
-  left: 50%;
-  top: 0;
-  bottom: 0;
-  width: 1px;
-  background: var(--timeline-line);
-  transform: translateX(-50%);
-  transform-origin: top;
+.about__inner {
+  display: flex;
+  gap: 3rem;
+  align-items: flex-start;
 }
 
-.arc__chapter {
-  position: relative;
-  width: 45%;
-  margin-bottom: clamp(4rem, 8vw, 8rem);
+.about__text {
+  flex: 1;
 }
 
-.arc__chapter--left {
-  margin-right: auto;
-  text-align: left;
-}
-
-.arc__chapter--right {
-  margin-left: auto;
-  text-align: left;
-}
-
-.arc__year {
-  display: inline-block;
-  font-size: var(--fs-small);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.15em;
-  color: var(--accent);
-  margin-bottom: 1rem;
-}
-
-.arc__chapter h2 {
-  font-size: var(--fs-h2);
-  font-weight: 600;
-  line-height: 1.2;
-  margin-bottom: 1rem;
-  letter-spacing: -0.01em;
-}
-
-.arc__chapter p {
+.about__text p {
   color: var(--text-muted);
   margin-bottom: 1rem;
 }
 
-.arc__chapter p:last-of-type {
+.about__text p:last-child {
   margin-bottom: 0;
 }
 
-.arc__photo {
-  margin-top: 2rem;
-  border-radius: 8px;
+.about__photo-wrapper {
+  flex-shrink: 0;
+  width: 180px;
+}
+
+.about__photo {
+  width: 180px;
+  height: 180px;
+  object-fit: cover;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+/* ============================================
+   EXPERIENCE
+   ============================================ */
+
+.experience {
+  padding: var(--section-pad) 2rem;
+  max-width: var(--content-max);
+  margin: 0 auto;
+}
+
+.timeline {
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  padding-left: 2rem;
+}
+
+.timeline__item {
+  position: relative;
+  margin-bottom: 2.5rem;
+}
+
+.timeline__item::before {
+  content: '';
+  position: absolute;
+  left: -2rem;
+  top: 0.5rem;
+  width: 8px;
+  height: 8px;
+  background: var(--accent);
+  border-radius: 50%;
+  transform: translateX(-50%);
+}
+
+.timeline__date {
+  font-size: var(--fs-small);
+  color: var(--text-muted);
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.timeline__content h3 {
+  font-size: var(--fs-body);
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.timeline__role {
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.timeline__role::before {
+  content: '— ';
+}
+
+.timeline__content p {
+  color: var(--text-muted);
+  font-size: var(--fs-small);
+}
+
+/* ============================================
+   EDUCATION
+   ============================================ */
+
+.education {
+  padding: var(--section-pad) 2rem;
+  max-width: var(--content-max);
+  margin: 0 auto;
+}
+
+.education__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+}
+
+.education__card {
+  background: var(--bg-card);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  padding: 2rem;
+}
+
+.education__card h3 {
+  font-size: clamp(1.1rem, 1.8vw, 1.375rem);
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.education__degree {
+  color: var(--text-muted);
+  margin-bottom: 0.25rem;
+}
+
+.education__years {
+  font-size: var(--fs-small);
+  color: var(--text-muted);
+  opacity: 0.6;
+  margin-bottom: 0.75rem;
+}
+
+.education__detail {
+  font-size: var(--fs-small);
+  color: var(--accent);
 }
 
 /* ============================================
@@ -254,36 +348,13 @@ img {
 }
 
 /* ============================================
-   THE INTERESTING BITS
-   ============================================ */
-
-.bits {
-  padding: var(--section-pad) 2rem;
-  max-width: var(--content-max);
-  margin: 0 auto;
-}
-
-.bits__heading {
-  font-size: var(--fs-h2);
-  font-weight: 600;
-  margin-bottom: 2.5rem;
-}
-
-.bits__content p {
-  color: var(--text-muted);
-  margin-bottom: 1.5rem;
-  font-size: clamp(1.05rem, 1.6vw, 1.3rem);
-  line-height: 1.8;
-}
-
-/* ============================================
    CONTACT
    ============================================ */
 
 .contact {
   padding: var(--section-pad) 2rem;
   text-align: center;
-  min-height: 60vh;
+  min-height: 50vh;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -352,8 +423,7 @@ img {
 }
 
 /* ============================================
-   NO-JS FALLBACK: ANIMATION INITIAL STATES
-   Only hide elements when JS is available
+   NO-JS FALLBACK
    ============================================ */
 
 html:not(.no-js) .hero__name .char {
@@ -361,29 +431,29 @@ html:not(.no-js) .hero__name .char {
   transform: translateY(40px);
 }
 
-html:not(.no-js) .arc__chapter {
+html:not(.no-js) .hero__title,
+html:not(.no-js) .hero__subtitle {
   opacity: 0;
-  transform: translateY(60px);
 }
 
-html:not(.no-js) .arc__photo {
+html:not(.no-js) .about__inner {
   opacity: 0;
-  transform: translateX(-40px);
+  transform: translateY(30px);
+}
+
+html:not(.no-js) .timeline__item {
+  opacity: 0;
+  transform: translateY(30px);
+}
+
+html:not(.no-js) .education__card {
+  opacity: 0;
+  transform: translateY(30px);
 }
 
 html:not(.no-js) .highlight-card {
   opacity: 0;
   transform: translateY(40px);
-}
-
-html:not(.no-js) .bits__heading {
-  opacity: 0;
-  transform: translateY(30px);
-}
-
-html:not(.no-js) .bits__content p {
-  opacity: 0;
-  transform: translateY(20px);
 }
 
 /* ============================================
@@ -395,17 +465,14 @@ html:not(.no-js) .bits__content p {
     letter-spacing: -0.03em;
   }
 
-  .arc__timeline-line {
-    left: 1rem;
+  .about__inner {
+    flex-direction: column-reverse;
+    align-items: center;
+    text-align: center;
   }
 
-  .arc__chapter {
-    width: 100%;
-    padding-left: 2.5rem;
-  }
-
-  .arc__chapter--right {
-    margin-left: 0;
+  .education__grid {
+    grid-template-columns: 1fr;
   }
 
   .highlights__grid {

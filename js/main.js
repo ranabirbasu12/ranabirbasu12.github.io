@@ -1,11 +1,13 @@
 document.documentElement.classList.remove('no-js');
 gsap.registerPlugin(ScrollTrigger);
 
-// ---- Hero: staggered letter reveal ----
+// ---- Hero ----
 
 function initHero() {
   const chars = document.querySelectorAll('.hero__name .char');
   const scrollIndicator = document.querySelector('.hero__scroll-indicator');
+  const title = document.querySelector('.hero__title');
+  const subtitle = document.querySelector('.hero__subtitle');
 
   gsap.to(chars, {
     opacity: 1,
@@ -15,7 +17,8 @@ function initHero() {
     ease: 'power3.out',
     delay: 0.3,
     onComplete: () => {
-      typeTagline();
+      gsap.to(title, { opacity: 1, duration: 0.8, ease: 'power2.out' });
+      gsap.to(subtitle, { opacity: 0.6, duration: 0.8, delay: 0.3, ease: 'power2.out' });
       gsap.to(scrollIndicator, { opacity: 1, duration: 1, delay: 1 });
     }
   });
@@ -33,81 +36,68 @@ function initHero() {
   });
 }
 
-// ---- Hero: typewriter effect ----
+// ---- About ----
 
-function typeTagline() {
-  const el = document.querySelector('.hero__tagline');
-  const text = 'From a monastery school to private credit \u2014 a story of curiosity.';
-  let i = 0;
-
-  function type() {
-    if (i < text.length) {
-      el.textContent += text.charAt(i);
-      i++;
-      setTimeout(type, 30);
-    }
-  }
-
-  type();
-}
-
-// ---- Arc: chapter reveals ----
-
-function initArc() {
-  gsap.fromTo('.arc__timeline-line',
-    { scaleY: 0 },
+function initAbout() {
+  gsap.fromTo('.about__inner',
+    { opacity: 0, y: 30 },
     {
-      scaleY: 1,
-      ease: 'none',
+      opacity: 1,
+      y: 0,
+      duration: 0.8,
+      ease: 'power2.out',
       scrollTrigger: {
-        trigger: '.arc',
+        trigger: '.about',
         start: 'top 80%',
-        end: 'bottom 20%',
-        scrub: true
+        toggleActions: 'play none none none'
       }
     }
   );
+}
 
-  document.querySelectorAll('.arc__chapter').forEach((chapter) => {
-    const isLeft = chapter.classList.contains('arc__chapter--left');
+// ---- Experience ----
 
-    gsap.fromTo(chapter,
-      { opacity: 0, x: isLeft ? -60 : 60, y: 40 },
+function initExperience() {
+  document.querySelectorAll('.timeline__item').forEach((item, i) => {
+    gsap.fromTo(item,
+      { opacity: 0, y: 30 },
       {
         opacity: 1,
-        x: 0,
         y: 0,
-        duration: 1,
+        duration: 0.6,
+        delay: i * 0.1,
         ease: 'power2.out',
         scrollTrigger: {
-          trigger: chapter,
-          start: 'top 80%',
-          toggleActions: 'play none none none'
-        }
-      }
-    );
-  });
-
-  const photo = document.querySelector('.arc__photo');
-  if (photo) {
-    gsap.fromTo(photo,
-      { opacity: 0, x: -40 },
-      {
-        opacity: 1,
-        x: 0,
-        duration: 1.2,
-        ease: 'power2.out',
-        scrollTrigger: {
-          trigger: photo,
+          trigger: item,
           start: 'top 85%',
           toggleActions: 'play none none none'
         }
       }
     );
-  }
+  });
 }
 
-// ---- Highlights: staggered card reveal ----
+// ---- Education ----
+
+function initEducation() {
+  gsap.fromTo('.education__card',
+    { opacity: 0, y: 30 },
+    {
+      opacity: 1,
+      y: 0,
+      duration: 0.7,
+      stagger: 0.15,
+      ease: 'power2.out',
+      scrollTrigger: {
+        trigger: '.education__grid',
+        start: 'top 80%',
+        toggleActions: 'play none none none'
+      }
+    }
+  );
+}
+
+// ---- Highlights ----
 
 function initHighlights() {
   gsap.fromTo('.highlight-card',
@@ -127,43 +117,7 @@ function initHighlights() {
   );
 }
 
-// ---- Bits: paragraph fade-ins ----
-
-function initBits() {
-  gsap.fromTo('.bits__heading',
-    { opacity: 0, y: 30 },
-    {
-      opacity: 1,
-      y: 0,
-      duration: 0.8,
-      ease: 'power2.out',
-      scrollTrigger: {
-        trigger: '.bits__heading',
-        start: 'top 85%',
-        toggleActions: 'play none none none'
-      }
-    }
-  );
-
-  document.querySelectorAll('.bits__content p').forEach((p) => {
-    gsap.fromTo(p,
-      { opacity: 0, y: 20 },
-      {
-        opacity: 1,
-        y: 0,
-        duration: 0.8,
-        ease: 'power2.out',
-        scrollTrigger: {
-          trigger: p,
-          start: 'top 88%',
-          toggleActions: 'play none none none'
-        }
-      }
-    );
-  });
-}
-
-// ---- Contact: fade in ----
+// ---- Contact ----
 
 function initContact() {
   gsap.fromTo('.contact',
@@ -185,8 +139,9 @@ function initContact() {
 
 document.addEventListener('DOMContentLoaded', () => {
   initHero();
-  initArc();
+  initAbout();
+  initExperience();
+  initEducation();
   initHighlights();
-  initBits();
   initContact();
 });
