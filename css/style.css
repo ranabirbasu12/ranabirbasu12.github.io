@@ -95,8 +95,6 @@ img {
 
 .hero__name .char {
   display: inline-block;
-  opacity: 0;
-  transform: translateY(40px);
 }
 
 .hero__name .char.space {
@@ -169,8 +167,6 @@ img {
   position: relative;
   width: 45%;
   margin-bottom: clamp(4rem, 8vw, 8rem);
-  opacity: 0;
-  transform: translateY(60px);
 }
 
 .arc__chapter--left {
@@ -213,8 +209,6 @@ img {
 .arc__photo {
   margin-top: 2rem;
   border-radius: 8px;
-  opacity: 0;
-  transform: translateX(-40px);
 }
 
 /* ============================================
@@ -238,8 +232,6 @@ img {
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 12px;
   padding: 2rem;
-  opacity: 0;
-  transform: translateY(40px);
   transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
@@ -275,8 +267,6 @@ img {
   font-size: var(--fs-h2);
   font-weight: 600;
   margin-bottom: 2.5rem;
-  opacity: 0;
-  transform: translateY(30px);
 }
 
 .bits__content p {
@@ -284,8 +274,6 @@ img {
   margin-bottom: 1.5rem;
   font-size: clamp(1.05rem, 1.6vw, 1.3rem);
   line-height: 1.8;
-  opacity: 0;
-  transform: translateY(20px);
 }
 
 /* ============================================
@@ -361,6 +349,41 @@ img {
   font-size: var(--fs-small);
   color: var(--text-muted);
   opacity: 0.5;
+}
+
+/* ============================================
+   NO-JS FALLBACK: ANIMATION INITIAL STATES
+   Only hide elements when JS is available
+   ============================================ */
+
+html:not(.no-js) .hero__name .char {
+  opacity: 0;
+  transform: translateY(40px);
+}
+
+html:not(.no-js) .arc__chapter {
+  opacity: 0;
+  transform: translateY(60px);
+}
+
+html:not(.no-js) .arc__photo {
+  opacity: 0;
+  transform: translateX(-40px);
+}
+
+html:not(.no-js) .highlight-card {
+  opacity: 0;
+  transform: translateY(40px);
+}
+
+html:not(.no-js) .bits__heading {
+  opacity: 0;
+  transform: translateY(30px);
+}
+
+html:not(.no-js) .bits__content p {
+  opacity: 0;
+  transform: translateY(20px);
 }
 
 /* ============================================

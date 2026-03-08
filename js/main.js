@@ -1,3 +1,4 @@
+document.documentElement.classList.remove('no-js');
 gsap.registerPlugin(ScrollTrigger);
 
 // ---- Hero: staggered letter reveal ----
