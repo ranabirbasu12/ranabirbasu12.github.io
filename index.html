@@ -1,233 +1,129 @@
 <!DOCTYPE html>
-<html lang="en" class="no-js">
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Ranabir Basu</title>
-  <meta name="description" content="Ranabir Basu — Associate at Ascertis Credit. IIM Calcutta, IIT Kharagpur.">
-  <meta property="og:title" content="Ranabir Basu">
-  <meta property="og:description" content="Associate, India Credit Division — Ascertis Credit.">
-  <meta property="og:type" content="website">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ranabir Basu | Quest Log</title>
+
+    <!-- 8-bit Retro Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <!-- Grain overlay -->
-  <div class="grain" aria-hidden="true"></div>
 
-  <!-- Hero -->
-  <section id="hero" class="hero">
-    <div class="hero__bg">
-      <img src="https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=1920&q=80" alt="" class="hero__bg-img" loading="eager">
-      <div class="hero__bg-overlay"></div>
-    </div>
-    <div class="hero__content">
-      <p class="hero__pre">Welcome</p>
-      <h1 class="hero__name">
-        <span class="hero__name-line"><span class="char">R</span><span class="char">a</span><span class="char">n</span><span class="char">a</span><span class="char">b</span><span class="char">i</span><span class="char">r</span></span>
-        <span class="hero__name-line"><span class="char">B</span><span class="char">a</span><span class="char">s</span><span class="char">u</span></span>
-      </h1>
-      <div class="hero__info">
-        <p class="hero__title">Associate, India Credit Division</p>
-        <p class="hero__company">Ascertis Credit</p>
-        <div class="hero__tags">
-          <span>IIM Calcutta '26</span>
-          <span class="hero__dot"></span>
-          <span>IIT Kharagpur '24</span>
-        </div>
-      </div>
-    </div>
-    <div class="hero__scroll">
-      <span>Scroll to explore</span>
-      <div class="hero__scroll-line"></div>
-    </div>
-  </section>
+    <!-- CRT Scanline Overlay -->
+    <div class="crt-overlay"></div>
 
-  <!-- About -->
-  <section id="about" class="about">
-    <div class="about__container">
-      <div class="about__label">
-        <span class="label">01</span>
-        <span class="label-text">About</span>
-      </div>
-      <div class="about__grid">
-        <div class="about__photo-col">
-          <div class="about__photo-frame">
-            <img src="images/42467743_1961809980578234_486514709671968768_n.jpg" alt="Ranabir Basu" loading="lazy" class="about__photo">
-          </div>
-          <p class="about__photo-caption">Kolkata, India</p>
+    <!-- Boot / Start Screen -->
+    <div class="boot-screen" id="boot-screen">
+        <div class="boot-content">
+            <h1 class="glitch-text" data-text="RANABIR_OS v1.0">RANABIR_OS v1.0</h1>
+            <div class="terminal-lines" id="terminal-lines">
+                <p>> Initializing PixiJS engine...</p>
+                <p>> Loading sprite sheets...</p>
+                <p>> Building tilemap scenes...</p>
+                <p>> Calibrating HD-2D shaders...</p>
+                <p>> SYSTEM READY.</p>
+            </div>
+            <div class="loading-bar">
+                <div class="loading-fill" id="loading-fill"></div>
+            </div>
+            <p class="start-prompt blink" id="start-prompt" style="display:none;">[ CLICK or SCROLL ] TO START</p>
         </div>
-        <div class="about__text-col">
-          <h2 class="about__heading">Building at the intersection of finance &amp; technology.</h2>
-          <p>I work in private credit — evaluating investment opportunities, building financial models, and structuring deals at one of India's largest private credit firms.</p>
-          <p>Before this, I spent time across investment banking, product management, and strategy. I studied Financial Engineering at IIT Kharagpur and did my MBA at IIM Calcutta.</p>
-          <p>I'm interested in finance, technology, and the places where they overlap.</p>
-        </div>
-      </div>
     </div>
-  </section>
 
-  <!-- Experience -->
-  <section id="experience" class="experience">
-    <div class="experience__container">
-      <div class="experience__label">
-        <span class="label">02</span>
-        <span class="label-text">Experience</span>
-      </div>
-      <div class="experience__list">
-        <article class="exp-card">
-          <div class="exp-card__header">
-            <span class="exp-card__date">2026 —</span>
-            <span class="exp-card__type">Private Credit</span>
-          </div>
-          <h3 class="exp-card__company">Ascertis Credit</h3>
-          <p class="exp-card__role">Associate, India Credit Division</p>
-          <p class="exp-card__desc">Deal evaluation, financial modeling, and investment structuring at one of India's leading private credit firms.</p>
-        </article>
-        <article class="exp-card">
-          <div class="exp-card__header">
-            <span class="exp-card__date">2023</span>
-            <span class="exp-card__type">Investment Banking</span>
-          </div>
-          <h3 class="exp-card__company">DC Advisory</h3>
-          <p class="exp-card__role">Investment Banking Intern</p>
-          <p class="exp-card__desc">Sector scanning across insurance, EV, AI, and education. Live deal support. Awarded a PPO.</p>
-        </article>
-        <article class="exp-card">
-          <div class="exp-card__header">
-            <span class="exp-card__date">2022 — 2023</span>
-            <span class="exp-card__type">Strategy</span>
-          </div>
-          <h3 class="exp-card__company">Venwiz Technologies</h3>
-          <p class="exp-card__role">Strategy Intern</p>
-          <p class="exp-card__desc">Redesigned vendor categorization for 15,000+ suppliers on a B2B procurement platform.</p>
-        </article>
-        <article class="exp-card">
-          <div class="exp-card__header">
-            <span class="exp-card__date">2022</span>
-            <span class="exp-card__type">Product</span>
-          </div>
-          <h3 class="exp-card__company">Snapdeal</h3>
-          <p class="exp-card__role">Product &amp; User Growth Intern</p>
-          <p class="exp-card__desc">Feature development, A/B testing, and ONDC seller onboarding.</p>
-        </article>
-        <article class="exp-card">
-          <div class="exp-card__header">
-            <span class="exp-card__date">2022</span>
-            <span class="exp-card__type">Research</span>
-          </div>
-          <h3 class="exp-card__company">IIM Bangalore</h3>
-          <p class="exp-card__role">Research Intern</p>
-          <p class="exp-card__desc">Built a web scraper for 30,000+ Supreme Court documents with automated captcha bypass.</p>
-        </article>
-      </div>
-    </div>
-  </section>
+    <!-- PixiJS Game Canvas Container -->
+    <div id="game-canvas"></div>
 
-  <!-- Education -->
-  <section id="education" class="education">
-    <div class="education__container">
-      <div class="education__label">
-        <span class="label">03</span>
-        <span class="label-text">Education</span>
-      </div>
-      <div class="education__grid">
-        <div class="edu-card">
-          <div class="edu-card__img">
-            <img src="https://images.unsplash.com/photo-1562774053-701939374585?w=800&q=80" alt="Campus" loading="lazy">
-            <div class="edu-card__img-overlay"></div>
-          </div>
-          <div class="edu-card__body">
-            <h3>IIM Calcutta</h3>
-            <p class="edu-card__degree">Master of Business Administration</p>
-            <p class="edu-card__meta">2024 — 2026</p>
-            <p class="edu-card__highlight">President, Finance &amp; Investments Club</p>
-          </div>
+    <!-- HUD Overlay (HTML on top of canvas) -->
+    <div class="hud" id="game-hud">
+        <div class="hud-row">
+            <span class="hud-label">LVL</span>
+            <span class="hud-value" id="hud-level">??</span>
+            <span class="hud-label">CLASS</span>
+            <span class="hud-value" id="hud-class">???</span>
         </div>
-        <div class="edu-card">
-          <div class="edu-card__img">
-            <img src="https://images.unsplash.com/photo-1544531586-fde5298cdd40?w=800&q=80" alt="Campus" loading="lazy">
-            <div class="edu-card__img-overlay"></div>
-          </div>
-          <div class="edu-card__body">
-            <h3>IIT Kharagpur</h3>
-            <p class="edu-card__degree">B.Tech + M.Tech — Mining &amp; Financial Engineering</p>
-            <p class="edu-card__meta">2019 — 2024 &nbsp;&bull;&nbsp; CGPA: 8.4/10</p>
-            <p class="edu-card__highlight">Coordinator, International Relations Cell</p>
-          </div>
+        <div class="hud-row">
+            <div class="xp-bar">
+                <div class="xp-fill" id="hud-xp"></div>
+            </div>
         </div>
-      </div>
+        <div class="hud-row">
+            <span class="hud-label">HP</span>
+            <div class="hp-bar">
+                <div class="hp-fill" id="hud-hp"></div>
+            </div>
+        </div>
+        <div class="hud-quest" id="hud-quest">QUEST: Begin the journey.</div>
     </div>
-  </section>
 
-  <!-- Highlights -->
-  <section id="highlights" class="highlights">
-    <div class="highlights__container">
-      <div class="highlights__label">
-        <span class="label">04</span>
-        <span class="label-text">Highlights</span>
-      </div>
-      <div class="highlights__grid">
-        <div class="hl-card">
-          <div class="hl-card__number">01</div>
-          <h3 class="hl-card__title">National Winner</h3>
-          <p>CFA Institute Research Challenge — only undergraduate team among 48 business schools. Represented India at APAC.</p>
+    <!-- Dialogue Box Overlay -->
+    <div class="dialogue-overlay" id="dialogue-overlay">
+        <div class="dialogue-box">
+            <p id="dialogue-text"></p>
+            <span class="dialogue-cursor blink">_</span>
         </div>
-        <div class="hl-card">
-          <div class="hl-card__number">02</div>
-          <h3 class="hl-card__title">Published Researcher</h3>
-          <p>North American Journal of Economics &amp; Finance. International edition, 29K+ citation journal.</p>
-        </div>
-        <div class="hl-card">
-          <div class="hl-card__number">03</div>
-          <h3 class="hl-card__title">Gold, Silver &amp; Bronze</h3>
-          <p>Three medals across Inter IIT Tech Meets — ML for portfolio optimization, robotics, and supply chain.</p>
-        </div>
-        <div class="hl-card">
-          <div class="hl-card__number">04</div>
-          <h3 class="hl-card__title">Top 5 / 800+</h3>
-          <p>Hult Prize global nominee, Nairobi 2022. Regional finalist at IIM Calcutta, 2025.</p>
-        </div>
-        <div class="hl-card">
-          <div class="hl-card__number">05</div>
-          <h3 class="hl-card__title">150+ Internships Secured</h3>
-          <p>Led IIT KGP's International Relations Cell. Stanford, Yale, INR 9.8M in funding.</p>
-        </div>
-      </div>
     </div>
-  </section>
 
-  <!-- Contact -->
-  <footer id="contact" class="contact">
-    <div class="contact__bg">
-      <img src="https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=1920&q=80" alt="" class="contact__bg-img" loading="lazy">
-      <div class="contact__bg-overlay"></div>
-    </div>
-    <div class="contact__content">
-      <p class="contact__pre">Get in touch</p>
-      <h2 class="contact__name">Ranabir Basu</h2>
-      <div class="contact__links">
-        <a href="mailto:ranabirbasu12@gmail.com" class="contact__link">
-          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
-          <span>Email</span>
-        </a>
-        <a href="https://www.linkedin.com/in/ranabir-b-ab2374113/" target="_blank" rel="noopener" class="contact__link">
-          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/></svg>
-          <span>LinkedIn</span>
-        </a>
-        <a href="https://www.instagram.com/arubbas_mirani/" target="_blank" rel="noopener" class="contact__link">
-          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="20" x="2" y="2" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/></svg>
-          <span>Instagram</span>
-        </a>
-      </div>
-      <a href="assets/ranabir_basu_cv.pdf" target="_blank" class="contact__cv-btn">Download CV</a>
-    </div>
-  </footer>
+    <!-- Scene Label Overlay -->
+    <div class="scene-label" id="scene-label"></div>
 
-  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/ScrollTrigger.min.js"></script>
-  <script src="js/main.js"></script>
+    <!-- Scroll Spacer (GSAP ScrollTrigger drives this) -->
+    <div id="scroll-spacer"></div>
+
+    <!-- Vertical Section: Achievements & Contact -->
+    <section class="vertical-zone" id="vertical-zone">
+
+        <div class="retro-container">
+            <h2 class="pixel-heading">ACHIEVEMENTS UNLOCKED</h2>
+
+            <div class="pixel-grid">
+                <div class="pixel-card">
+                    <div class="icon trophy-icon"></div>
+                    <h3>National Champion</h3>
+                    <p>CFA Institute Research Challenge. Defeated 48 guilds to represent India at APAC.</p>
+                </div>
+                <div class="pixel-card">
+                    <div class="icon book-icon"></div>
+                    <h3>Published Scholar</h3>
+                    <p>North American Journal of Economics & Finance. +10 to Intelligence.</p>
+                </div>
+                <div class="pixel-card">
+                    <div class="icon medal-icon"></div>
+                    <h3>Inter IIT Medals</h3>
+                    <p>Gold, Silver, Bronze across ML, Robotics, and Supply Chain tech meets.</p>
+                </div>
+                <div class="pixel-card">
+                    <div class="icon globe-icon"></div>
+                    <h3>Global Top 5</h3>
+                    <p>Hult Prize Nominee. Secured INR 9.8M gold for IIT KGP IRC.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="retro-container contact-zone">
+            <h2 class="pixel-heading">INITIATE CO-OP MODE?</h2>
+            <div class="action-menu">
+                <a href="mailto:ranabirbasu12@gmail.com" class="btn-pixel">SEND_MESSAGE</a>
+                <a href="https://www.linkedin.com/in/ranabir-b-ab2374113/" target="_blank" class="btn-pixel">LINKEDIN_PROFILE</a>
+                <a href="assets/ranabir_basu_cv.pdf" target="_blank" class="btn-pixel">DOWNLOAD_SAVE_FILE</a>
+            </div>
+            <p class="credits">&copy; 2026 RANABIR BASU // GAME OVER</p>
+        </div>
+
+    </section>
+
+    <!-- Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/7.3.2/pixi.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.4/howler.min.js"></script>
+
+    <!-- Game Code -->
+    <script src="js/art.js"></script>
+    <script src="js/game.js"></script>
 </body>
 </html>
