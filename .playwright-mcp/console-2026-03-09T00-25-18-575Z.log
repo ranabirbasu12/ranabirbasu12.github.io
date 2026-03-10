@@ -1,5 +1,0 @@
-[      35ms] [ERROR] Failed to load resource: the server responded with a status of 404 (File not found) @ http://localhost:8765/images/logos/ascertis.png:0
-[      35ms] [ERROR] Failed to load resource: the server responded with a status of 404 (File not found) @ http://localhost:8765/images/logos/dc-advisory.png:0
-[    8224ms] [ERROR] Failed to load resource: the server responded with a status of 404 (File not found) @ http://localhost:8765/images/logos/iimb.png:0
-[    8224ms] [ERROR] Failed to load resource: the server responded with a status of 404 (File not found) @ http://localhost:8765/images/logos/snapdeal.png:0
-[    8224ms] [ERROR] Failed to load resource: the server responded with a status of 404 (File not found) @ http://localhost:8765/images/logos/venwiz.png:0

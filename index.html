@@ -1,171 +1,252 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ranabir Basu | Quest Log</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ranabir Basu</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Open+Sans:wght@400;600;700&family=Press+Start+2P&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
-    <!-- 8-bit Retro Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+    body {
+      font-family: 'Open Sans', sans-serif;
+      background: #0a0a1a;
+      color: #fff;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
 
-    <link rel="stylesheet" href="css/style.css?v=1.5">
+    .greeting {
+      text-align: center;
+      margin-bottom: 50px;
+    }
+
+    .greeting h1 {
+      font-family: 'Bebas Neue', cursive;
+      font-size: 56px;
+      letter-spacing: 3px;
+      margin-bottom: 8px;
+    }
+
+    .greeting h1 span {
+      color: #00bfff;
+    }
+
+    .greeting p {
+      color: #888;
+      font-size: 14px;
+    }
+
+    .choices {
+      display: flex;
+      gap: 40px;
+      margin-bottom: 40px;
+    }
+
+    .choice {
+      width: 320px;
+      padding: 40px 30px;
+      border-radius: 12px;
+      text-align: center;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s, border-color 0.3s;
+      text-decoration: none;
+      color: #fff;
+      position: relative;
+    }
+
+    .choice:hover {
+      transform: translateY(-4px);
+    }
+
+    .choice.classic {
+      background: linear-gradient(135deg, #0d1b2a, #1b2d45);
+      border: 2px solid #00bfff;
+      box-shadow: 0 4px 30px rgba(0, 191, 255, 0.15);
+    }
+
+    .choice.classic:hover {
+      box-shadow: 0 8px 40px rgba(0, 191, 255, 0.3);
+    }
+
+    .choice.classic .default-badge {
+      position: absolute;
+      top: -10px;
+      right: -10px;
+      background: #00bfff;
+      color: #0a0a1a;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 20px;
+      letter-spacing: 0.5px;
+    }
+
+    .choice.game {
+      background: linear-gradient(135deg, #1a0a2e, #2d1b45);
+      border: 2px solid #555;
+      box-shadow: 0 4px 30px rgba(100, 100, 100, 0.1);
+    }
+
+    .choice.game:hover {
+      border-color: #00ff88;
+      box-shadow: 0 8px 40px rgba(0, 255, 136, 0.2);
+    }
+
+    .choice-icon {
+      font-size: 40px;
+      margin-bottom: 16px;
+    }
+
+    .choice h2 {
+      font-family: 'Bebas Neue', cursive;
+      font-size: 26px;
+      letter-spacing: 2px;
+      margin-bottom: 8px;
+    }
+
+    .choice.game h2 {
+      font-family: 'Press Start 2P', cursive;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .choice p {
+      font-size: 13px;
+      color: #999;
+      line-height: 1.5;
+    }
+
+    .countdown {
+      text-align: center;
+      color: #666;
+      font-size: 13px;
+    }
+
+    .countdown .timer {
+      display: inline-block;
+      width: 28px;
+      height: 28px;
+      line-height: 28px;
+      border-radius: 50%;
+      background: rgba(0, 191, 255, 0.15);
+      color: #00bfff;
+      font-weight: 700;
+      font-size: 14px;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+
+    .progress-bar {
+      width: 200px;
+      height: 3px;
+      background: #222;
+      border-radius: 2px;
+      margin: 12px auto 0;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: #00bfff;
+      border-radius: 2px;
+      width: 100%;
+      transition: width 1s linear;
+    }
+
+    /* Mobile */
+    @media (max-width: 768px) {
+      .choices {
+        flex-direction: column;
+        gap: 20px;
+        padding: 0 20px;
+      }
+
+      .choice {
+        width: 100%;
+      }
+
+      .greeting h1 {
+        font-size: 40px;
+      }
+    }
+  </style>
 </head>
-
 <body>
 
-    <!-- CRT Scanline Overlay -->
-    <div class="crt-overlay"></div>
+  <div class="greeting">
+    <h1>RANABIR <span>BASU</span></h1>
+    <p>Choose your experience</p>
+  </div>
 
-    <!-- Boot / Start Screen -->
-    <div class="boot-screen" id="boot-screen">
-        <div class="boot-content">
-            <h1 class="glitch-text" data-text="RANABIR_OS v1.0">RANABIR_OS v1.0</h1>
-            <div class="terminal-lines" id="terminal-lines">
-                <p>> Initializing PixiJS engine...</p>
-                <p>> Loading sprite sheets...</p>
-                <p>> Building tilemap scenes...</p>
-                <p>> Calibrating HD-2D shaders...</p>
-                <p>> SYSTEM READY.</p>
-            </div>
-            <div class="loading-bar">
-                <div class="loading-fill" id="loading-fill"></div>
-            </div>
-            <p class="start-prompt blink" id="start-prompt" style="display:none;">[ CLICK or SCROLL ] TO START</p>
-        </div>
+  <div class="choices">
+    <a href="portfolio/" class="choice classic" id="classicChoice">
+      <span class="default-badge">DEFAULT</span>
+      <div class="choice-icon">📄</div>
+      <h2>PORTFOLIO</h2>
+      <p>Clean, professional overview of my journey, experience, and projects.</p>
+    </a>
+
+    <a href="quest/" class="choice game" id="gameChoice">
+      <div class="choice-icon">🎮</div>
+      <h2>QUEST LOG</h2>
+      <p>An interactive RPG-style walkthrough of my life. Scroll to explore.</p>
+    </a>
+  </div>
+
+  <div class="countdown" id="countdown">
+    Redirecting to portfolio in <span class="timer" id="timer">5</span>
+    <div class="progress-bar">
+      <div class="progress-fill" id="progressFill"></div>
     </div>
+  </div>
 
-    <!-- PixiJS Game Canvas Container -->
-    <div id="game-canvas"></div>
+  <script>
+    var seconds = 5;
+    var timerEl = document.getElementById('timer');
+    var progressEl = document.getElementById('progressFill');
+    var countdownEl = document.getElementById('countdown');
+    var cancelled = false;
 
-    <!-- HUD Overlay (HTML on top of canvas) -->
-    <div class="hud" id="game-hud">
-        <div class="hud-row">
-            <span class="hud-label">LVL</span>
-            <span class="hud-value" id="hud-level">??</span>
-            <span class="hud-label">CLASS</span>
-            <span class="hud-value" id="hud-class">???</span>
-        </div>
-        <div class="hud-row">
-            <div class="xp-bar">
-                <div class="xp-fill" id="hud-xp"></div>
-            </div>
-        </div>
-        <div class="hud-row">
-            <span class="hud-label">HP</span>
-            <div class="hp-bar">
-                <div class="hp-fill" id="hud-hp"></div>
-            </div>
-        </div>
-        <div class="hud-quest" id="hud-quest">QUEST: Begin the journey.</div>
-    </div>
+    // Start progress bar animation
+    setTimeout(function () {
+      progressEl.style.width = '0%';
+    }, 50);
 
-    <div class="inventory-btn" id="inventory-btn" style="display:none;">
-        <span class="bag-icon">🎒</span>
-        <span class="bag-label" id="bag-xp">0 XP</span>
-        <div class="click-pulse"></div>
-    </div>
+    var interval = setInterval(function () {
+      if (cancelled) return;
+      seconds--;
+      timerEl.textContent = seconds;
+      if (seconds <= 0) {
+        clearInterval(interval);
+        window.location.href = 'portfolio/';
+      }
+    }, 1000);
 
-    <!-- Inventory Modal -->
-    <div id="inventory-modal" class="pixel-modal hidden">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>SKILLS & ITEMS</h2>
-                <button id="close-inventory" class="close-btn">X</button>
-            </div>
-            <div class="modal-body custom-scrollbar">
-                <div class="inventory-grid" id="inventory-grid">
-                    <!-- Populated by JS -->
-                </div>
-            </div>
-        </div>
-    </div>
+    // Cancel countdown if user hovers on game choice
+    document.getElementById('gameChoice').addEventListener('mouseenter', function () {
+      cancelled = true;
+      clearInterval(interval);
+      countdownEl.style.opacity = '0';
+    });
 
-    <!-- Dialogue Box Overlay -->
-    <div class="dialogue-overlay" id="dialogue-overlay">
-        <div class="dialogue-box">
-            <p id="dialogue-text"></p>
-            <span class="dialogue-cursor blink">_</span>
-        </div>
-    </div>
+    // Also cancel on any click (the link will handle navigation)
+    document.querySelectorAll('.choice').forEach(function (el) {
+      el.addEventListener('click', function () {
+        cancelled = true;
+        clearInterval(interval);
+      });
+    });
+  </script>
 
-    <!-- Inspect Prompt -->
-    <div id="inspect-prompt">[CLICK] TO INSPECT</div>
-
-    <!-- Scene Label Overlay -->
-    <div class="scene-label" id="scene-label"></div>
-
-    <!-- Persistent Bottom Information Box -->
-    <div class="phase-info-box" id="phase-info-box">
-        <div class="phase-info-header">
-            <span id="info-title">PHASE TITLE</span>
-            <span class="info-stats">
-                <span id="info-role">ROLE</span> | <span id="info-xp">+XP</span>
-            </span>
-        </div>
-        <div class="phase-info-body">
-            <p id="info-desc"></p>
-            <span class="dialogue-cursor blink">_</span>
-        </div>
-    </div>
-
-    <!-- Scroll Spacer (GSAP ScrollTrigger drives this) -->
-    <div id="scroll-spacer"></div>
-
-    <!-- Vertical Section: Achievements & Contact -->
-    <section class="vertical-zone" id="vertical-zone">
-
-        <div class="retro-container">
-            <h2 class="pixel-heading">ACHIEVEMENTS UNLOCKED</h2>
-
-            <div class="pixel-grid">
-                <div class="pixel-card">
-                    <div class="icon trophy-icon"></div>
-                    <h3>National Champion</h3>
-                    <p>CFA Institute Research Challenge. Defeated 48 guilds to represent India at APAC.</p>
-                </div>
-                <div class="pixel-card">
-                    <div class="icon book-icon"></div>
-                    <h3>Published Scholar</h3>
-                    <p>North American Journal of Economics & Finance. +10 to Intelligence.</p>
-                </div>
-                <div class="pixel-card">
-                    <div class="icon medal-icon"></div>
-                    <h3>Inter IIT Medals</h3>
-                    <p>Gold, Silver, Bronze across ML, Robotics, and Supply Chain tech meets.</p>
-                </div>
-                <div class="pixel-card">
-                    <div class="icon globe-icon"></div>
-                    <h3>Global Top 5</h3>
-                    <p>Hult Prize Nominee. Secured INR 9.8M gold for IIT KGP IRC.</p>
-                </div>
-            </div>
-        </div>
-
-        <div class="retro-container contact-zone">
-            <h2 class="pixel-heading">INITIATE CO-OP MODE?</h2>
-            <div class="action-menu">
-                <a href="mailto:ranabirbasu12@gmail.com" class="btn-pixel">SEND_MESSAGE</a>
-                <a href="https://www.linkedin.com/in/ranabir-b-ab2374113/" target="_blank"
-                    class="btn-pixel">LINKEDIN_PROFILE</a>
-                <a href="assets/ranabir_basu_cv.pdf" target="_blank" class="btn-pixel">DOWNLOAD_SAVE_FILE</a>
-            </div>
-            <p class="credits">&copy; 2026 RANABIR BASU // GAME OVER</p>
-        </div>
-
-    </section>
-
-    <!-- Libraries -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/7.3.2/pixi.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.4/howler.min.js"></script>
-
-    <!-- Game Code -->
-    <script src="js/art.js?v=1.9"></script>
-    <script src="js/game.js?v=1.9"></script>
 </body>
-
 </html>

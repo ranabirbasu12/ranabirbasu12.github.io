@@ -1,3 +1,2 @@
-node_modules/
-*.png
-screenshot.js
+.DS_Store
+screenshots/
