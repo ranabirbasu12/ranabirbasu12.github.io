@@ -11,7 +11,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
 
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/style.css?v=1.5">
 </head>
 
 <body>
@@ -60,6 +60,27 @@
             </div>
         </div>
         <div class="hud-quest" id="hud-quest">QUEST: Begin the journey.</div>
+    </div>
+
+    <div class="inventory-btn" id="inventory-btn" style="display:none;">
+        <span class="bag-icon">🎒</span>
+        <span class="bag-label" id="bag-xp">0 XP</span>
+        <div class="click-pulse"></div>
+    </div>
+
+    <!-- Inventory Modal -->
+    <div id="inventory-modal" class="pixel-modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>SKILLS & ITEMS</h2>
+                <button id="close-inventory" class="close-btn">X</button>
+            </div>
+            <div class="modal-body custom-scrollbar">
+                <div class="inventory-grid" id="inventory-grid">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Dialogue Box Overlay -->
@@ -143,8 +164,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.4/howler.min.js"></script>
 
     <!-- Game Code -->
-    <script src="js/art.js"></script>
-    <script src="js/game.js"></script>
+    <script src="js/art.js?v=1.9"></script>
+    <script src="js/game.js?v=1.9"></script>
 </body>
 
 </html>

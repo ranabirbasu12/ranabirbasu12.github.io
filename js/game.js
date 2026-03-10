@@ -82,6 +82,7 @@ var app, world, camera, SCENE_WIDTH, charContainer, charSprite;
 var currentSceneIndex = -1;
 var currentTier = '';
 var isWalking = false;
+var totalBonusXP = 0;
 var particles = [];
 var charTextures = {};
 var tileTextures = {};
@@ -133,6 +134,61 @@ function updateGameAudio(walking, sitting) {
 /* ------------------------------------------
    HELPERS
    ------------------------------------------ */
+function showFloatingText(container, text, x, y, color) {
+    var floatText = new PIXI.Text(text, {
+        fontFamily: "'Press Start 2P', Courier",
+        fontSize: 10,
+        fill: color || 0xffcc00,
+        align: 'center'
+    });
+    floatText.x = x;
+    floatText.y = y;
+    floatText.anchor.set(0.5);
+    container.addChild(floatText);
+
+    gsap.to(floatText, {
+        y: y - 50,
+        alpha: 0,
+        duration: 1.5,
+        ease: "power1.out",
+        onComplete: function () {
+            if (floatText.parent) floatText.parent.removeChild(floatText);
+            floatText.destroy();
+        }
+    });
+
+    // Play sound if available
+    if (SOUNDS.levelup) {
+        SOUNDS.levelup.rate(2.0 + Math.random());
+        SOUNDS.levelup.play();
+    }
+}
+
+function makeInteractive(obj, container, popupText, xpVal) {
+    if (xpVal === undefined) xpVal = 10;
+
+    obj.eventMode = 'static';
+    obj.cursor = 'pointer';
+
+    obj.hasBeenClicked = false;
+
+    obj.on('pointerdown', function () {
+        if (obj.hasBeenClicked) return;
+        obj.hasBeenClicked = true;
+
+        totalBonusXP += xpVal;
+        showFloatingText(container, "+" + xpVal + " XP\n" + popupText, obj.x, obj.y - 40, 0x00ff00);
+
+        // little bounce animation
+        gsap.to(obj.scale, { x: 1.2, y: 1.2, duration: 0.1, yoyo: true, repeat: 1 });
+
+        // Instantly update the inventory bag UI count
+        if (typeof updateInventoryUI === 'function') {
+            updateInventoryUI();
+        }
+    });
+}
+
 function hexToRGB(hex) {
     return {
         r: (hex >> 16) & 0xFF,
@@ -199,10 +255,68 @@ function showSceneLabel(text) {
 }
 
 /* ------------------------------------------
-   HUD UPDATE
+   HUD UPDATE & INVENTORY
    ------------------------------------------ */
+const SKILLS_DATA = [
+    { id: 'math', name: 'Calculus Notes', icon: '📐', desc: 'Survived freshman math.', xpReq: 5 },
+    { id: 'python', name: 'Python Scripts', icon: '🐍', desc: 'Learned to code.', xpReq: 15 },
+    { id: 'bicycle', name: 'Campus Bicycle', icon: '🚲', desc: 'Navigated the huge campus.', xpReq: 25 },
+    { id: 'sql', name: 'SQL Queries', icon: '🗄️', desc: 'Data extraction mastery.', xpReq: 40 },
+    { id: 'abtest', name: 'A/B Spreadsheets', icon: '📊', desc: 'Analyzed user behavior.', xpReq: 55 },
+    { id: 'pizza', name: 'Cold Pizza', icon: '🍕', desc: 'Fueled late nights.', xpReq: 70 },
+    { id: 'finmod', name: 'Financial Models', icon: '📈', desc: 'Built DCF models.', xpReq: 85 },
+    { id: 'coffee', name: 'Espresso', icon: '☕', desc: 'Liquid energy.', xpReq: 100 },
+    { id: 'cfa', name: 'CFA Prep', icon: '📚', desc: 'Read 3000 pages.', xpReq: 115 },
+    { id: 'memos', name: 'Credit Memos', icon: '📝', desc: 'Wrote investment thesis.', xpReq: 130 }
+];
+
+function calculateTotalXP() {
+    var baseXP = 0;
+    if (currentSceneIndex >= 0 && SCENES[currentSceneIndex]) {
+        baseXP = SCENES[currentSceneIndex].xp;
+    }
+    return baseXP + totalBonusXP;
+}
+
+function updateInventoryUI() {
+    var currentXP = calculateTotalXP();
+    var bagXPElem = document.getElementById('bag-xp');
+    var invBtn = document.getElementById('inventory-btn');
+    if (bagXPElem) {
+        bagXPElem.innerText = currentXP + ' XP';
+    }
+    if (invBtn && currentSceneIndex > 0) {
+        invBtn.style.display = 'flex';
+    }
+}
+
+function renderInventoryGrid() {
+    var grid = document.getElementById('inventory-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+
+    var currentXP = calculateTotalXP();
+
+    SKILLS_DATA.forEach(function (skill) {
+        var isUnlocked = currentXP >= skill.xpReq;
+        var el = document.createElement('div');
+        el.className = 'inventory-item' + (isUnlocked ? '' : ' locked');
+
+        var reqHtml = isUnlocked ? '' : '<span class="item-req">' + skill.xpReq + ' XP</span>';
+
+        el.innerHTML =
+            reqHtml +
+            '<span class="item-icon">' + skill.icon + '</span>' +
+            '<h3 class="item-name">' + (isUnlocked ? skill.name : '???') + '</h3>' +
+            '<p class="item-desc">' + (isUnlocked ? skill.desc : 'Keep exploring to unlock.') + '</p>';
+
+        grid.appendChild(el);
+    });
+}
+
 function updateHUD(sceneIndex, sceneProgress) {
     var scene = SCENES[sceneIndex];
+    if (!scene) return; // Guard against invalid sceneIndex during transitions
     var nextScene = SCENES[Math.min(sceneIndex + 1, SCENES.length - 1)];
     document.getElementById('hud-level').textContent = scene.lvl;
     document.getElementById('hud-class').textContent = scene.cls;
@@ -211,10 +325,13 @@ function updateHUD(sceneIndex, sceneProgress) {
     var xp = scene.xp + (nextScene.xp - scene.xp) * sceneProgress;
     var hp = scene.hp + (nextScene.hp - scene.hp) * sceneProgress;
 
+    // Use regular progress bar for visual flow, but bag uses total calculated XP
     document.getElementById('hud-xp').style.width = xp + '%';
     var hpFill = document.getElementById('hud-hp');
     hpFill.style.width = hp + '%';
     hpFill.style.background = hp < 30 ? '#ef4444' : hp < 60 ? '#facc15' : '#22c55e';
+
+    updateInventoryUI();
 }
 
 /* ------------------------------------------
@@ -375,28 +492,33 @@ function drawText(container, text, x, y, fontSize, color) {
 }
 
 function drawMonitor(container, x, y, screenColor, lineColor, lineCount) {
-    // desk surface
-    drawRect(container, x - 60, y - 14, 120, 14, 0x4a3220, 1);
-    drawRect(container, x - 58, y - 12, 116, 3, 0x6a5030, 1);
+    var g = new PIXI.Container();
+    g.x = x; g.y = y;
+    // We add pivot so it scales from the center instead of the bottom-left
+    g.pivot.set(0, -40);
+    g.y -= 40;
+
+    // monitor stand top
+    drawRect(g, -6, -22, 12, 4, 0x777788, 1);
+    // stand front
+    drawRect(g, -6, -18, 12, 6, 0x555566, 1);
+    // stand base
+    drawRect(g, -14, -14, 28, 6, 0x666677, 1);
+    drawRect(g, -14, -8, 28, 4, 0x444455, 1);
     // monitor body
-    drawRect(container, x - 44, y - 82, 88, 60, 0x222233, 1);
+    drawRect(g, -44, -82, 88, 60, 0x222233, 1);
     // screen bezel
-    drawRect(container, x - 40, y - 78, 80, 52, screenColor || 0x0a1a0a, 1);
+    drawRect(g, -40, -78, 80, 52, screenColor || 0x0a1a0a, 1);
     // screen glow
-    drawRect(container, x - 38, y - 76, 76, 48, screenColor || 0x0a1a0a, 0.8);
+    drawRect(g, -38, -76, 76, 48, screenColor || 0x0a1a0a, 0.8);
     // lines on screen
     var lc = lineCount || 4;
     for (var i = 0; i < lc; i++) {
-        var lw = 30 + Math.random() * 35;
-        drawText(container, '...', x, y - 10, 8, 0x44ff44);
+        drawText(g, '...', 0, -60 + (i * 8), 8, lineColor || 0x44ff44);
     }
-    // monitor stand top
-    drawRect(container, x - 6, y - 22, 12, 4, 0x777788, 1);
-    // stand front
-    drawRect(container, x - 6, y - 18, 12, 6, 0x555566, 1);
-    // stand base
-    drawRect(container, x - 14, y - 14, 28, 6, 0x666677, 1);
-    drawRect(container, x - 14, y - 8, 28, 4, 0x444455, 1);
+    g.hitArea = new PIXI.Rectangle(-45, -85, 90, 80);
+    container.addChild(g);
+    return g;
 }
 
 function drawWindow(container, x, y, w, h) {
@@ -503,23 +625,31 @@ function drawDesk(container, x, y, w) {
 }
 
 function drawCoffeeCup(container, x, y) {
+    var cont = new PIXI.Container();
+    cont.x = x; cont.y = y;
+    cont.pivot.set(0, -10);
+    cont.y -= 10;
+
     var g = new PIXI.Graphics();
     g.beginFill(0xeeeeee, 1);
-    g.drawRect(x - 7, y - 14, 14, 14);
+    g.drawRect(-7, -14, 14, 14);
     g.endFill();
     g.beginFill(0x6a3a1a, 1);
-    g.drawRect(x - 5, y - 12, 10, 8);
+    g.drawRect(-5, -12, 10, 8);
     g.endFill();
     // steam
     g.beginFill(0xcccccc, 0.3);
-    g.drawRect(x - 2, y - 20, 2, 5);
-    g.drawRect(x + 2, y - 22, 2, 6);
+    g.drawRect(-2, -20, 2, 5);
+    g.drawRect(2, -22, 2, 6);
     g.endFill();
     // handle
     g.lineStyle(3, 0xeeeeee, 1);
-    g.arc(x + 9, y - 7, 5, -1.2, 1.2, false);
-    container.addChild(g);
-    return g;
+    g.arc(9, -7, 5, -1.2, 1.2, false);
+
+    cont.hitArea = new PIXI.Rectangle(-12, -25, 25, 25);
+    cont.addChild(g);
+    container.addChild(cont);
+    return cont;
 }
 
 function drawStage(container, x, y, w) {
@@ -535,26 +665,34 @@ function drawStage(container, x, y, w) {
 }
 
 function drawTrophy(container, x, y, color) {
+    var cont = new PIXI.Container();
+    cont.x = x; cont.y = y;
+    cont.pivot.set(0, -15);
+    cont.y -= 15;
+
     var g = new PIXI.Graphics();
     g.beginFill(color || 0xfacc15, 1);
     // cup body
-    g.drawRect(x - 10, y - 28, 20, 16);
+    g.drawRect(-10, -28, 20, 16);
     // cup rim
-    g.drawRect(x - 12, y - 30, 24, 4);
+    g.drawRect(-12, -30, 24, 4);
     // handles
-    g.drawRect(x - 15, y - 26, 5, 10);
-    g.drawRect(x + 10, y - 26, 5, 10);
+    g.drawRect(-15, -26, 5, 10);
+    g.drawRect(10, -26, 5, 10);
     // stem
-    g.drawRect(x - 3, y - 12, 6, 8);
+    g.drawRect(-3, -12, 6, 8);
     // base
-    g.drawRect(x - 10, y - 4, 20, 5);
+    g.drawRect(-10, -4, 20, 5);
     g.endFill();
     // shine
     g.beginFill(0xffffff, 0.3);
-    g.drawRect(x - 6, y - 26, 4, 10);
+    g.drawRect(-6, -26, 4, 10);
     g.endFill();
-    container.addChild(g);
-    return g;
+
+    cont.hitArea = new PIXI.Rectangle(-15, -30, 30, 30);
+    cont.addChild(g);
+    container.addChild(cont);
+    return cont;
 }
 
 function drawBed(container, x, y) {
@@ -605,10 +743,19 @@ function drawBeanBag(container, x, y) {
 }
 
 function drawPizzaBox(container, x, y) {
-    drawRect(container, x - 18, y - 8, 36, 8, 0xd4a037, 1);
-    drawRect(container, x - 16, y - 6, 32, 4, 0xe8c060, 1);
+    var g = new PIXI.Container();
+    g.x = x; g.y = y;
+    g.pivot.set(0, -4);
+    g.y -= 4;
+
+    drawRect(g, -18, -8, 36, 8, 0xd4a037, 1);
+    drawRect(g, -16, -6, 32, 4, 0xe8c060, 1);
     // grease stain
-    drawRect(container, x - 5, y - 5, 10, 2, 0xc49030, 0.5);
+    drawRect(g, -5, -5, 10, 2, 0xc49030, 0.5);
+
+    g.hitArea = new PIXI.Rectangle(-20, -10, 40, 12);
+    container.addChild(g);
+    return g;
 }
 
 function createBicycleGraphics() {
@@ -678,14 +825,14 @@ function buildScene(index) {
     container.addChild(propsFrontLayer);
     container.addChild(effectsLayer);
 
-    // Background gradient — extend to full height
-    var bg = createGradientGraphics(sw, sh, palette.bg1, palette.bg2);
+    // Background gradient — extend to full height and extra width to avoid seams on resize
+    var bg = createGradientGraphics(sw + 2000, sh, palette.bg1, palette.bg2);
     backgroundLayer.addChild(bg);
 
     // Ambient color wash for scene mood
     var ambientWash = new PIXI.Graphics();
     ambientWash.beginFill(palette.ambient, 0.06);
-    ambientWash.drawRect(0, 0, sw, sh);
+    ambientWash.drawRect(0, 0, sw + 2000, sh);
     ambientWash.endFill();
     backgroundLayer.addChild(ambientWash);
 
@@ -695,7 +842,7 @@ function buildScene(index) {
     parallaxLayer.filters = [new PIXI.BlurFilter(0.8)];
 
     // Floor
-    var floor = createFloorLayer(sw, sh, palette.floor);
+    var floor = createFloorLayer(sw + 2000, sh, palette.floor);
     floorLayer.addChild(floor);
 
     // Spotlight — behind the floor so glow doesn't cover the ground
@@ -750,33 +897,36 @@ function buildScene(index) {
             break;
 
         case 'covid-lockdown':
-            drawBed(propsBackLayer, cx - sw * 0.2, floorTop + 20);
-            drawDesk(propsBackLayer, cx + sw * 0.15, floorTop - 10);
-            drawMonitor(propsBackLayer, cx + sw * 0.15, floorTop - 10, 0x0a0a14, 0x44ff44, 2);
+            // 2020 layout
+            drawBed(propsBackLayer, sw * 0.25, floorTop + 20);
+            var desk0 = drawDesk(propsBackLayer, sw * 0.75, floorTop - 10);
+            var mon0 = drawMonitor(propsFrontLayer, sw * 0.75, floorTop - 10);
+            makeInteractive(mon0, effectsLayer, "Zoom Lectures", 15);
             // window with green virus particles outside (simulated by drawRects or actual particles)
             drawWindow(propsBackLayer, cx - sw * 0.3, floorTop - 120, 80, 100);
             drawText(effectsLayer, "LOCKDOWN", cx - sw * 0.3 + 40, floorTop - 130, 8, 0x44ff44);
-            var flickerG = drawRect(effectsLayer, 0, 0, sw, sh, 0x000000, 0.15);
+            var flickerG = drawRect(effectsLayer, 0, 0, sw + 2000, sh, 0x000000, 0.15);
             flickerG.visible = false;
             flickerOverlays.push({ graphics: flickerG, sceneIndex: index });
             break;
 
         case 'campus-return':
-            drawTree(parallaxLayer, cx - sw * 0.2, floorTop);
-            drawTree(parallaxLayer, cx, floorTop);
-            drawTree(parallaxLayer, cx + sw * 0.3, floorTop);
-            // Bicycle (using reusable function)
+            // 2021 return
             var bike = createBicycleGraphics();
-            bike.x = cx - 80;
+            bike.x = sw * 0.2;
             bike.y = floorTop + 25;
             propsFrontLayer.addChild(bike);
-            sceneData._bike = bike;
-            drawText(effectsLayer, "FRESH AIR", cx, floorTop - 180, 10, 0xffffff);
+            makeInteractive(bike, effectsLayer, "Fresh Air", 20);
+
+            var desk1 = drawDesk(propsBackLayer, sw * 0.8, floorTop - 10);
+            var mon1 = drawMonitor(propsFrontLayer, sw * 0.8, floorTop - 10);
+            makeInteractive(mon1, effectsLayer, "Python Scripts", 15);
             break;
 
         case 'iimb-intern':
             drawDesk(propsBackLayer, cx + sw * 0.15, floorTop - 10, 120);
-            drawMonitor(propsBackLayer, cx + sw * 0.15, floorTop - 10, 0x0a1a0a, 0x44ff44, 6);
+            var mon1 = drawMonitor(propsBackLayer, cx + sw * 0.15, floorTop - 10, 0x0a1a0a, 0x44ff44, 6);
+            makeInteractive(mon1, effectsLayer, "Python Scripts", 15);
             drawBookshelf(propsBackLayer, cx - sw * 0.2, floorTop);
             // professor NPC hint
             var profG = new PIXI.Graphics();
@@ -792,10 +942,14 @@ function buildScene(index) {
             break;
 
         case 'snapdeal':
-            drawDesk(propsBackLayer, cx - 40, floorTop - 10, 90);
-            drawMonitor(propsBackLayer, cx - 60, floorTop - 10, 0x1a1a2a, 0xffaa44, 3);
-            drawMonitor(propsBackLayer, cx - 20, floorTop - 10, 0x1a1a2a, 0xffaa44, 3);
-            drawPizzaBox(propsFrontLayer, cx + 60, floorTop + 20);
+            var desk2 = drawDesk(propsBackLayer, sw * 0.3, floorTop - 10);
+            var mon2 = drawMonitor(propsFrontLayer, sw * 0.3, floorTop - 10);
+            var desk3 = drawDesk(propsBackLayer, sw * 0.7, floorTop - 10);
+            var mon3 = drawMonitor(propsFrontLayer, sw * 0.7, floorTop - 10);
+            makeInteractive(mon2, effectsLayer, "A/B Spreadsheets", 15);
+            makeInteractive(mon3, effectsLayer, "SQL Queries", 15);
+            var pizza = drawPizzaBox(propsFrontLayer, sw * 0.5, floorTop + 20);
+            makeInteractive(pizza, effectsLayer, "Cold Pizza", 20);
             drawBeanBag(propsBackLayer, cx + sw * 0.25, floorTop + 20);
             drawWhiteboard(propsBackLayer, cx + sw * 0.15, floorTop, 5);
             // energy drink
@@ -809,19 +963,37 @@ function buildScene(index) {
             drawRect(propsBackLayer, cx - sw * 0.3, floorTop - 180, sw * 0.6, 4, 0x444466, 1);
             drawRect(propsBackLayer, cx - sw * 0.3, floorTop - 60, sw * 0.6, 4, 0x444466, 1);
             drawRect(propsBackLayer, cx, floorTop - 180, 4, 124, 0x444466, 1);
-            drawDesk(propsBackLayer, cx + sw * 0.12, floorTop - 10, 140);
-            // Bloomberg terminal
-            drawMonitor(propsBackLayer, cx + sw * 0.12, floorTop - 10, 0x0a0a14, 0x44ff44, 5);
-            drawCoffeeCup(propsFrontLayer, cx + sw * 0.12 + 55, floorTop - 22);
-            drawCoffeeCup(propsFrontLayer, cx + sw * 0.12 - 55, floorTop - 22);
-            drawCoffeeCup(propsFrontLayer, cx - sw * 0.15, floorTop - 22);
+            var desk4 = drawDesk(propsBackLayer, sw * 0.8, floorTop - 10);
+            var mon4 = drawMonitor(propsFrontLayer, sw * 0.8, floorTop - 10);
+            makeInteractive(mon4, effectsLayer, "Financial Models", 25);
+
+            var cup1 = drawCoffeeCup(propsFrontLayer, sw * 0.4, floorTop - 10);
+            var cup2 = drawCoffeeCup(propsFrontLayer, sw * 0.5, floorTop - 10);
+            var cup3 = drawCoffeeCup(propsFrontLayer, sw * 0.6, floorTop - 10);
+            makeInteractive(cup1, effectsLayer, "Espresso", 10);
+            makeInteractive(cup2, effectsLayer, "Espresso", 10);
+            makeInteractive(cup3, effectsLayer, "Espresso", 10);
             break;
 
         case 'iitkgp-senior':
-            drawTree(parallaxLayer, cx - sw * 0.2, floorTop);
-            drawDesk(propsBackLayer, cx + sw * 0.15, floorTop - 10, 100);
-            drawMonitor(propsBackLayer, cx + sw * 0.15, floorTop - 10, 0x1a0a0a, 0xffaa44, 4);
-            drawTrophy(propsBackLayer, cx - sw * 0.15, floorTop, 0xfacc15); // CFA trophy
+            // CFAs and Meets
+            var desk5 = drawDesk(propsBackLayer, sw * 0.2, floorTop - 10);
+            var mon5 = drawMonitor(propsFrontLayer, sw * 0.2, floorTop - 10);
+            makeInteractive(mon5, effectsLayer, "CFA Prep", 15);
+            var tro1 = drawTrophy(propsFrontLayer, sw * 0.35, floorTop - 10);
+            makeInteractive(tro1, effectsLayer, "CFA Trophy!", 30);
+
+            // Bunch of medals
+            var tro2 = drawTrophy(propsFrontLayer, sw * 0.5, floorTop - 10);
+            var tro3 = drawTrophy(propsFrontLayer, sw * 0.65, floorTop - 10);
+            var tro4 = drawTrophy(propsFrontLayer, sw * 0.8, floorTop - 10);
+            var tro5 = drawTrophy(propsFrontLayer, sw * 0.95, floorTop - 10);
+            tro3.scale.set(0.8);
+            tro4.scale.set(0.6);
+            makeInteractive(tro2, effectsLayer, "Gold Medal", 20);
+            makeInteractive(tro3, effectsLayer, "Silver Medal", 15);
+            makeInteractive(tro4, effectsLayer, "Bronze Medal", 10);
+            makeInteractive(tro5, effectsLayer, "Gold Medal", 20);
             drawText(effectsLayer, 'CFA RESEARCH CHALLENGE', cx - sw * 0.15, floorTop - 80, 6, 0xfacc15);
             break;
 
@@ -830,10 +1002,14 @@ function buildScene(index) {
             // trophy shelf — wide and prominent
             drawRect(propsBackLayer, cx + sw * 0.15 - 10, floorTop - 80, 120, 8, 0x7a5a2a, 1);
             drawRect(propsBackLayer, cx + sw * 0.15 - 8, floorTop - 72, 116, 3, 0x9a7a4a, 1);
-            drawTrophy(propsBackLayer, cx + sw * 0.15 + 5, floorTop - 82, 0xfacc15);
-            drawTrophy(propsBackLayer, cx + sw * 0.15 + 30, floorTop - 82, 0xc0c0c0);
-            drawTrophy(propsBackLayer, cx + sw * 0.15 + 55, floorTop - 82, 0xcd7f32);
-            drawTrophy(propsBackLayer, cx + sw * 0.15 + 80, floorTop - 82, 0xfacc15);
+            var tro2 = drawTrophy(propsBackLayer, cx + sw * 0.15 + 5, floorTop - 82, 0xfacc15);
+            var tro3 = drawTrophy(propsBackLayer, cx + sw * 0.15 + 30, floorTop - 82, 0xc0c0c0);
+            var tro4 = drawTrophy(propsBackLayer, cx + sw * 0.15 + 55, floorTop - 82, 0xcd7f32);
+            var tro5 = drawTrophy(propsBackLayer, cx + sw * 0.15 + 80, floorTop - 82, 0xfacc15);
+            makeInteractive(tro2, effectsLayer, "Gold Medal", 20);
+            makeInteractive(tro3, effectsLayer, "Silver Medal", 15);
+            makeInteractive(tro4, effectsLayer, "Bronze Medal", 10);
+            makeInteractive(tro5, effectsLayer, "Gold Medal", 20);
             // banner
             drawText(effectsLayer, 'IIT KGP GRADUATION', cx, floorTop - 200, 11, 0xfacc15);
             break;
@@ -845,18 +1021,20 @@ function buildScene(index) {
             bookPile.beginFill(0x8b4513); bookPile.drawRect(-20, -10, 40, 10); bookPile.endFill();
             bookPile.beginFill(0x228b22); bookPile.drawRect(-18, -20, 36, 10); bookPile.endFill();
             bookPile.beginFill(0x4682b4); bookPile.drawRect(-22, -30, 44, 10); bookPile.endFill();
-            bookPile.x = cx - sw * 0.2; bookPile.y = floorTop - 10;
+            bookPile.x = cx - sw * 0.2; bookPile.y = -400;
             propsFrontLayer.addChild(bookPile);
             // We'll create falling properties
-            sceneData._fallingBooksX = cx - sw * 0.2;
+            sceneData._bookPile = bookPile;
             sceneData._deskY = floorTop - 10;
             drawText(effectsLayer, 'IIM CALCUTTA', cx, floorTop - 180, 10, 0xffffff);
             break;
 
         case 'ascertis-intern':
-            drawDesk(propsBackLayer, cx + sw * 0.15, floorTop - 10, 120);
-            drawMonitor(propsBackLayer, cx + sw * 0.15, floorTop - 10, 0x0a0a1e, 0x4488ff, 5);
-            drawCoffeeCup(propsFrontLayer, cx + sw * 0.15 + 50, floorTop - 22);
+            var desk6 = drawDesk(propsBackLayer, sw * 0.8, floorTop - 10);
+            var mon6 = drawMonitor(propsFrontLayer, sw * 0.8, floorTop - 10);
+            makeInteractive(mon6, effectsLayer, "Credit Memos", 25);
+            var cup4 = drawCoffeeCup(propsFrontLayer, sw * 0.65, floorTop - 10);
+            makeInteractive(cup4, effectsLayer, "Espresso", 10);
             // PPO badge glow
             var badge = new PIXI.Graphics();
             badge.beginFill(0xfacc15, 0.9);
@@ -1096,36 +1274,46 @@ function updateSpecialAnimations() {
     var iimcSceneIdx = SCENES.findIndex(function (s) { return s.id === 'iimc-arrival'; });
     if (iimcSceneIdx !== -1 && currentSceneIndex === iimcSceneIdx) {
         fallTimer++;
-        if (fallTimer > 20) {
+        if (fallTimer > 5) {
             fallTimer = 0;
-            var sc = sceneContainers[iimcSceneIdx];
-            var sd = SCENES[iimcSceneIdx];
-            if (sc && sd._fallingBooksX !== undefined) {
+            // Drop a huge pile of books to cover the character
+            for (var i = 0; i < 4; i++) {
                 var book = new PIXI.Graphics();
-                var colors = [0x8b4513, 0x228b22, 0x4682b4, 0xcd5c5c, 0xdaa520];
-                var bw = 24 + Math.random() * 16;
-                var bh = 6 + Math.random() * 4;
+                var colors = [0x8b4513, 0x228b22, 0x4682b4, 0xcd5c5c, 0xdaa520, 0x483d8b];
+                var bw = 24 + Math.random() * 20;
+                var bh = 6 + Math.random() * 8;
                 book.beginFill(colors[Math.floor(Math.random() * colors.length)]);
                 book.drawRect(-bw / 2, -bh / 2, bw, bh);
                 book.endFill();
-                book.x = sd._fallingBooksX + (Math.random() - 0.5) * 30;
+
+                // Fall exactly where character is standing
+                book.x = charContainer.x + (Math.random() - 0.5) * 80;
                 book.y = -50;
                 book.rotation = (Math.random() - 0.5);
-                sc.propsFrontLayer.addChild(book);
+
+                console.log("Spawning book at", book.x, book.y, "Target Y:", charContainer.y - (Math.random() * 150), "Scene:", currentSceneIndex);
+
+                // Add to world so they cover character
+                world.addChild(book);
+
+                // Stack from floor upwards
+                var targetY = charContainer.y - (Math.random() * 150);
 
                 gsap.to(book, {
-                    y: sd._deskY - 20 - Math.random() * 20,
-                    rotation: (Math.random() - 0.5) * 0.2,
-                    duration: 1.0,
+                    y: targetY,
+                    rotation: (Math.random() - 0.5) * 0.4,
+                    duration: 0.8 + Math.random() * 0.6,
                     ease: "bounce.out",
-                    onComplete: function () {
-                        gsap.to(book, {
-                            alpha: 0, duration: 2, delay: 5, onComplete: function () {
-                                if (book.parent) book.parent.removeChild(book);
-                                book.destroy();
+                    onComplete: function (b) {
+                        // Let them sit and bury the character longer
+                        gsap.to(b, {
+                            alpha: 0, duration: 2, delay: 10, onComplete: function () {
+                                if (b.parent) b.parent.removeChild(b);
+                                b.destroy();
                             }
                         });
-                    }
+                    },
+                    onCompleteParams: [book]
                 });
             }
         }
@@ -1364,6 +1552,8 @@ function updateGameProgress(progress) {
     var sceneProgress = rawIndex - sceneIndex;
     sceneProgress = clamp(sceneProgress, 0, 1);
 
+    currentSceneIndex = sceneIndex;
+
     // Camera: move through scenes
     var idlePhaseEnd = 0.5; // 50% of the scene's scroll is spent idling at the start (generous delay)
 
@@ -1376,10 +1566,23 @@ function updateGameProgress(progress) {
         targetCameraX = currentSceneCenterX;
         setCharacterWalking(false);
     } else {
-        // Moving phase: interpolate from current scene to next scene
         var moveProgress = (sceneProgress - idlePhaseEnd) / (1.0 - idlePhaseEnd);
         targetCameraX = currentSceneCenterX + moveProgress * (nextSceneCenterX - currentSceneCenterX);
         setCharacterWalking(true);
+    }
+
+    // Prop Animations
+    var activeSceneData = SCENES[sceneIndex];
+    if (activeSceneData) {
+        if (activeSceneData.id === 'iimc-arrival' && activeSceneData._bookPile) {
+            // Animate books falling in IIMC (drop from sky to desk during first 25% of scene)
+            var fallProg = clamp(sceneProgress * 4, 0, 1);
+            // Add a little basic bounce math:
+            var bounceProg = fallProg < 1 ? fallProg : 1 - Math.sin((sceneProgress - 0.25) * Math.PI * 4) * 0.1 * Math.exp(-(sceneProgress - 0.25) * 10);
+
+            var startY = -400;
+            activeSceneData._bookPile.y = startY + (activeSceneData._deskY - startY) * bounceProg;
+        }
     }
 
     // Center camera so character is at viewport center
@@ -1581,6 +1784,26 @@ function initGame() {
     // Show HUD
     document.getElementById('game-hud').style.display = 'block';
 
+    // Inventory setup
+    var invBtn = document.getElementById('inventory-btn');
+    var invModal = document.getElementById('inventory-modal');
+    var closeInv = document.getElementById('close-inventory');
+    if (invBtn && invModal && closeInv) {
+        invBtn.addEventListener('click', function () {
+            renderInventoryGrid();
+            invModal.classList.remove('hidden');
+        });
+        closeInv.addEventListener('click', function () {
+            invModal.classList.add('hidden');
+        });
+        // Click outside to close
+        invModal.addEventListener('click', function (e) {
+            if (e.target === invModal) {
+                invModal.classList.add('hidden');
+            }
+        });
+    }
+
     // Spawn initial particles for intro scene
     SCENES[0]._particlesSpawned = true;
     spawnSceneParticles(0);
@@ -1605,6 +1828,17 @@ function initGame() {
         scrub: 1.5,
         onUpdate: function (self) {
             updateGameProgress(self.progress);
+        },
+        onLeave: function () {
+            var infoBox = document.getElementById('phase-info-box');
+            if (infoBox) gsap.to(infoBox, { opacity: 0, duration: 0.2, onComplete: () => infoBox.style.display = 'none' });
+        },
+        onEnterBack: function () {
+            var infoBox = document.getElementById('phase-info-box');
+            if (infoBox) {
+                infoBox.style.display = 'block';
+                gsap.to(infoBox, { opacity: 1, duration: 0.2 });
+            }
         }
     });
 
