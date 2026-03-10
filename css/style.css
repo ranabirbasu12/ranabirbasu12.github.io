@@ -15,13 +15,16 @@
     --hud-border: #60a5fa;
 }
 
-*, *::before, *::after {
+*,
+*::before,
+*::after {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
 }
 
-html, body {
+html,
+body {
     width: 100%;
     overflow-x: hidden;
     background: #0a0a1e;
@@ -40,13 +43,11 @@ html, body {
     height: 100%;
     pointer-events: none;
     z-index: 9999;
-    background: repeating-linear-gradient(
-        0deg,
-        transparent,
-        transparent 2px,
-        rgba(0, 0, 0, 0.08) 2px,
-        rgba(0, 0, 0, 0.08) 4px
-    );
+    background: repeating-linear-gradient(0deg,
+            transparent,
+            transparent 2px,
+            rgba(0, 0, 0, 0.08) 2px,
+            rgba(0, 0, 0, 0.08) 4px);
     mix-blend-mode: multiply;
 }
 
@@ -104,28 +105,64 @@ html, body {
 }
 
 @keyframes glitch-1 {
-    0% { transform: translate(0); }
-    20% { transform: translate(-2px, 2px); }
-    40% { transform: translate(2px, -1px); }
-    60% { transform: translate(-1px, 1px); }
-    80% { transform: translate(1px, -2px); }
-    100% { transform: translate(0); }
+    0% {
+        transform: translate(0);
+    }
+
+    20% {
+        transform: translate(-2px, 2px);
+    }
+
+    40% {
+        transform: translate(2px, -1px);
+    }
+
+    60% {
+        transform: translate(-1px, 1px);
+    }
+
+    80% {
+        transform: translate(1px, -2px);
+    }
+
+    100% {
+        transform: translate(0);
+    }
 }
 
 @keyframes glitch-2 {
-    0% { transform: translate(0); }
-    20% { transform: translate(2px, -2px); }
-    40% { transform: translate(-2px, 1px); }
-    60% { transform: translate(1px, -1px); }
-    80% { transform: translate(-1px, 2px); }
-    100% { transform: translate(0); }
+    0% {
+        transform: translate(0);
+    }
+
+    20% {
+        transform: translate(2px, -2px);
+    }
+
+    40% {
+        transform: translate(-2px, 1px);
+    }
+
+    60% {
+        transform: translate(1px, -1px);
+    }
+
+    80% {
+        transform: translate(-1px, 2px);
+    }
+
+    100% {
+        transform: translate(0);
+    }
 }
 
 #terminal-lines p {
     font-family: var(--font-body);
     font-size: 1.2rem;
-    color: var(--pixel-green);
-    text-align: left;
+    color: var(--pixel-text);
+    text-align: center;
+    line-height: 1.5;
+    text-shadow: 2px 2px 0px #000;
     margin: 0.3rem 0;
     opacity: 0;
 }
@@ -158,7 +195,9 @@ html, body {
 }
 
 @keyframes blink {
-    50% { opacity: 0; }
+    50% {
+        opacity: 0;
+    }
 }
 
 /* ==========================================
@@ -228,7 +267,8 @@ html, body {
     font-weight: bold;
 }
 
-.xp-bar, .hp-bar {
+.xp-bar,
+.hp-bar {
     flex: 1;
     height: 10px;
     background: #1e293b;
@@ -240,8 +280,86 @@ html, body {
     width: 0%;
     height: 100%;
     background: var(--pixel-blue);
-    transition: width 0.4s steps(8);
+    transition: width 0.3s ease-out;
 }
+
+.hp-fill {
+    width: 100%;
+    height: 100%;
+    background: var(--pixel-green);
+    transition: width 0.3s ease-out;
+}
+
+.hud-quest {
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px dashed var(--hud-border);
+    color: var(--pixel-blue);
+    font-size: 0.6rem;
+    line-height: 1.4;
+}
+
+/* ==========================================
+   PHASE INFO BOX (Persistent Bottom UI)
+   ========================================== */
+.phase-info-box {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 90%;
+    max-width: 800px;
+    background: rgba(10, 15, 26, 0.95);
+    border: 3px solid var(--pixel-blue);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.8),
+        inset 0 0 10px rgba(59, 130, 246, 0.2);
+    display: none;
+    /* hidden until first scroll */
+    flex-direction: column;
+    z-index: 1000;
+    font-family: var(--font-body);
+}
+
+.phase-info-box.active {
+    display: flex;
+}
+
+.phase-info-header {
+    background: var(--pixel-blue);
+    color: #fff;
+    padding: 8px 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: var(--font-title);
+    font-size: 0.8rem;
+    text-shadow: 1px 1px 0 #000;
+}
+
+#info-title {
+    font-weight: bold;
+    letter-spacing: 1px;
+}
+
+.info-stats {
+    color: var(--pixel-yellow);
+    font-size: 0.7rem;
+}
+
+.phase-info-body {
+    padding: 15px 20px;
+    color: var(--pixel-text);
+    min-height: 80px;
+    /* enough space for a few lines */
+    position: relative;
+}
+
+#info-desc {
+    margin: 0;
+    font-size: 1.1rem;
+    line-height: 1.5;
+}
+
 
 .hp-fill {
     width: 100%;
@@ -260,24 +378,86 @@ html, body {
 }
 
 /* ==========================================
-   DIALOGUE BOX
+   DIALOGUE BOX & INTERACT
    ========================================== */
-.dialogue-overlay {
+#inspect-prompt {
+    display: none;
+    /* Disabled manual inspection */
     position: fixed;
-    bottom: 10%;
+    top: 50%;
+    left: 50%;
+    z-index: 150;
+    color: var(--pixel-yellow);
+    font-family: var(--font-heading);
+    font-size: 0.8rem;
+    cursor: pointer;
+    text-shadow: 2px 2px 0 #000;
+    pointer-events: auto;
+    background: rgba(0, 0, 0, 0.8);
+    padding: 10px 15px;
+    border: 2px solid var(--pixel-yellow);
+    border-radius: 4px;
+    transform: translate(-50%, -100px);
+    transition: opacity 0.2s, transform 0.2s;
+    animation: float 2s infinite ease-in-out;
+}
+
+#inspect-prompt:hover {
+    background: var(--pixel-yellow);
+    color: #000;
+    text-shadow: none;
+}
+
+@keyframes float {
+
+    0%,
+    100% {
+        margin-top: 0;
+    }
+
+    50% {
+        margin-top: -10px;
+    }
+}
+
+.dialogue-overlay {
+    position: absolute;
+    bottom: 25px;
+    /* Moved down to act as a subtitle/story banner */
     left: 50%;
     transform: translateX(-50%);
-    z-index: 100;
+    width: 60%;
+    max-width: 600px;
+    background: rgba(10, 10, 20, 0.85);
+    border: 3px solid #ffcc44;
+    border-radius: 8px;
+    padding: 15px 25px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.8),
+        inset 0 0 10px rgba(0, 0, 0, 0.5);
     display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    pointer-events: none;
+    /* Let clicks pass through since we removed manual dismissal */
 }
 
 .dialogue-box {
-    background: #0a0a1e;
-    border: 3px solid var(--pixel-blue);
-    padding: 20px 28px;
-    min-width: 400px;
-    max-width: 600px;
-    box-shadow: 0 0 20px rgba(96, 165, 250, 0.3);
+    background: transparent;
+    /* Changed to transparent */
+    border: none;
+    /* Removed border */
+    padding: 0;
+    /* Removed padding */
+    min-width: auto;
+    /* Removed min-width */
+    max-width: 100%;
+    /* Adjusted max-width */
+    box-shadow: none;
+    /* Removed box-shadow */
+    text-align: center;
+    /* Centered text */
 }
 
 .dialogue-box p {

@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,6 +13,7 @@
 
     <link rel="stylesheet" href="css/style.css">
 </head>
+
 <body>
 
     <!-- CRT Scanline Overlay -->
@@ -68,8 +70,25 @@
         </div>
     </div>
 
+    <!-- Inspect Prompt -->
+    <div id="inspect-prompt">[CLICK] TO INSPECT</div>
+
     <!-- Scene Label Overlay -->
     <div class="scene-label" id="scene-label"></div>
+
+    <!-- Persistent Bottom Information Box -->
+    <div class="phase-info-box" id="phase-info-box">
+        <div class="phase-info-header">
+            <span id="info-title">PHASE TITLE</span>
+            <span class="info-stats">
+                <span id="info-role">ROLE</span> | <span id="info-xp">+XP</span>
+            </span>
+        </div>
+        <div class="phase-info-body">
+            <p id="info-desc"></p>
+            <span class="dialogue-cursor blink">_</span>
+        </div>
+    </div>
 
     <!-- Scroll Spacer (GSAP ScrollTrigger drives this) -->
     <div id="scroll-spacer"></div>
@@ -108,7 +127,8 @@
             <h2 class="pixel-heading">INITIATE CO-OP MODE?</h2>
             <div class="action-menu">
                 <a href="mailto:ranabirbasu12@gmail.com" class="btn-pixel">SEND_MESSAGE</a>
-                <a href="https://www.linkedin.com/in/ranabir-b-ab2374113/" target="_blank" class="btn-pixel">LINKEDIN_PROFILE</a>
+                <a href="https://www.linkedin.com/in/ranabir-b-ab2374113/" target="_blank"
+                    class="btn-pixel">LINKEDIN_PROFILE</a>
                 <a href="assets/ranabir_basu_cv.pdf" target="_blank" class="btn-pixel">DOWNLOAD_SAVE_FILE</a>
             </div>
             <p class="credits">&copy; 2026 RANABIR BASU // GAME OVER</p>
@@ -126,4 +146,5 @@
     <script src="js/art.js"></script>
     <script src="js/game.js"></script>
 </body>
+
 </html>

@@ -63,6 +63,14 @@
             O: 0x2d3748, o: 0x3d4758,
             X: 0x1a365d, G: 0x94a3b8, g: 0xbfdbfe
         },
+        'formal-coat': {
+            H: 0x1a1a2e, h: 0x2d3748, S: 0xf4c794, s: 0xd4a574,
+            W: 0xffffff, E: 0x1a1a2e, B: 0x1a1a2e, M: 0xc4956a,
+            N: 0xd4a574, T: 0xe2e8f0, t: 0xcbd5e0, D: 0xf8fafc,
+            C: 0xcbd5e0, A: 0xe2e8f0, a: 0xcbd5e0, R: 0xf4c794,
+            P: 0x1a202c, p: 0x111827, L: 0x1e293b,
+            O: 0x2d3748, o: 0x3d4758, I: 0xef4444, X: 0x0f172a
+        },
         final: {
             H: 0x1a1a2e, h: 0x2d3748, S: 0xf4c794, s: 0xd4a574,
             W: 0xffffff, E: 0x1a1a2e, B: 0x1a1a2e, M: 0xc4956a,
@@ -504,6 +512,9 @@
         var modified = cloneRows(rows);
         if (tier === 'formal') {
             addTie(modified);
+        } else if (tier === 'formal-coat') {
+            addTie(modified);
+            addBlazer(modified);
         } else if (tier === 'graduate') {
             addGraduationCap(modified);
         } else if (tier === 'senior') {
@@ -522,7 +533,7 @@
     // =========================================================================
 
     GAME.generateCharacterTextures = function (renderer) {
-        var tiers = ['base', 'freshman', 'mid', 'formal', 'graduate', 'senior', 'final'];
+        var tiers = ['base', 'freshman', 'mid', 'formal', 'formal-coat', 'graduate', 'senior', 'final'];
         var result = {};
 
         var baseFrames = {
