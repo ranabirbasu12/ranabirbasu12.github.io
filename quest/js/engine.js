@@ -64,20 +64,54 @@
   var light = document.createElement('canvas');
   var lctx = light.getContext('2d');
   var dpr = 1, zoom = 4, viewW = 0, viewH = 0;
+  var zoomStep = 0, zoomMin = 1, zoomMax = 4, zoomBase = 4;
+  try { zoomStep = parseInt(localStorage.getItem('kgp-zoom'), 10) || 0; } catch (e) {}
 
   function resize() {
     dpr = Math.min(window.devicePixelRatio || 1, 3);
     canvas.width = Math.round(window.innerWidth * dpr);
     canvas.height = Math.round(window.innerHeight * dpr);
-    var target = window.innerWidth < 700 ? 12 : 27;     // tiles across
-    zoom = Math.max(2, Math.round(canvas.width / (S * target)));
+    var narrow = window.innerWidth < 700;
+    var target = narrow ? 12 : 27;                       // tiles across at the default zoom
+    zoomBase = Math.max(2, Math.round(canvas.width / (S * target)));
+    // Whole-number zoom keeps the pixels crisp; the floor stops you zooming out past a readable, fast view.
+    zoomMin = Math.max(1, Math.ceil(canvas.width / (S * (narrow ? 32 : 80))));
+    zoomMax = zoomBase + 2;
+    zoom = clamp(zoomBase + zoomStep, zoomMin, zoomMax);
+    zoomStep = zoom - zoomBase;
+    var zin = document.getElementById('zoom-in'), zout = document.getElementById('zoom-out');
+    if (zin) zin.disabled = zoom >= zoomMax;
+    if (zout) zout.disabled = zoom <= zoomMin;
     viewW = canvas.width / zoom;
     viewH = canvas.height / zoom;
     light.width = Math.ceil(viewW / 4) + 2;
     light.height = Math.ceil(viewH / 4) + 2;
   }
+  function changeZoom(d) {
+    var before = zoom;
+    zoomStep += d;
+    resize();
+    if (zoom !== before) {
+      try { localStorage.setItem('kgp-zoom', String(zoomStep)); } catch (e) {}
+    }
+  }
+
   window.addEventListener('resize', resize);
   resize();
+  document.getElementById('zoom-in').addEventListener('click', function () { changeZoom(1); });
+  document.getElementById('zoom-out').addEventListener('click', function () { changeZoom(-1); });
+  var wheelAcc = 0;
+  canvas.addEventListener('wheel', function (e) {
+    if (attractMode) return;
+    e.preventDefault();
+    wheelAcc += e.deltaY;
+    if (Math.abs(wheelAcc) > 120) { changeZoom(wheelAcc > 0 ? -1 : 1); wheelAcc = 0; }
+  }, { passive: false });
+  window.addEventListener('keydown', function (e) {
+    if (attractMode || dialogOpen) return;
+    if (e.code === 'Equal' || e.code === 'NumpadAdd') changeZoom(1);
+    else if (e.code === 'Minus' || e.code === 'NumpadSubtract') changeZoom(-1);
+  });
 
   /* ---------- Map chunks ---------- */
 

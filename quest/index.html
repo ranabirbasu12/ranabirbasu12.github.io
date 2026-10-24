@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/game.css">
+  <link rel="stylesheet" href="css/game.css?v=2">
 </head>
 <body>
   <canvas id="world" aria-label="The IIT Kharagpur campus"></canvas>
@@ -40,6 +40,11 @@
     <p id="dlg-text"></p>
     <div id="dlg-choices"></div>
     <span id="dlg-more" aria-hidden="true">&#9660;</span>
+  </div>
+
+  <div class="zoom" role="group" aria-label="Zoom">
+    <button type="button" class="pbtn" id="zoom-in" title="Zoom in (+)" aria-label="Zoom in">+</button>
+    <button type="button" class="pbtn" id="zoom-out" title="Zoom out (&minus;)" aria-label="Zoom out">&minus;</button>
   </div>
 
   <div id="mapview" class="overlay">
@@ -80,10 +85,10 @@
     </div>
   </div>
 
-  <script src="js/kgp-map.js"></script>
-  <script src="js/art.js"></script>
-  <script src="js/engine.js"></script>
-  <script src="js/story.js"></script>
+  <script src="js/kgp-map.js?v=2"></script>
+  <script src="js/art.js?v=2"></script>
+  <script src="js/engine.js?v=2"></script>
+  <script src="js/story.js?v=2"></script>
   <script>
     (function () {
       var c = document.getElementById('btn-continue'), n = document.getElementById('btn-new');

@@ -87,6 +87,25 @@ html, body {
 .clock .lore { color: #6a5c3e; }
 .buttons { display: flex; gap: 6px; }
 
+/* ---------- Zoom ---------- */
+
+.zoom {
+  position: fixed;
+  right: 12px;
+  bottom: max(16px, env(safe-area-inset-bottom));
+  display: none;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 16;
+}
+.playing .zoom { display: flex; }
+.zoom .pbtn { width: 44px; height: 44px; padding: 0; font-size: 18px; }
+.zoom .pbtn:disabled { opacity: 0.4; cursor: default; transform: none; }
+#dialog.open ~ .zoom { display: none; }
+@media (pointer: coarse) {
+  .zoom { bottom: calc(196px + env(safe-area-inset-bottom)); right: 22px; }
+}
+
 /* ---------- Dialogue ---------- */
 
 #dialog {
