@@ -4,249 +4,280 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Ranabir Basu</title>
+  <meta name="description" content="Ranabir Basu: Associate, India Credit at Ascertis Credit. Mining and financial engineer from IIT Kharagpur, MBA from IIM Calcutta, and builder of software on the side.">
+  <meta name="theme-color" content="#ECEEE6">
+  <meta property="og:title" content="Ranabir Basu">
+  <meta property="og:description" content="Private credit by day, software after hours. Read the layers.">
+  <meta property="og:type" content="website">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='8' fill='%23E4D3A3'/%3E%3Crect y='8' width='32' height='8' fill='%23BCCDB3'/%3E%3Crect y='16' width='32' height='8' fill='%23B5C7D6'/%3E%3Crect y='24' width='32' height='8' fill='%23D9BCB4'/%3E%3Crect x='13' width='6' height='22' fill='%2316242B'/%3E%3Cpath d='M11 22h10l-5 7z' fill='%2316242B'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Open+Sans:wght@400;600;700&family=Press+Start+2P&display=swap" rel="stylesheet">
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
-    body {
-      font-family: 'Open Sans', sans-serif;
-      background: #0a0a1a;
-      color: #fff;
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      overflow: hidden;
-    }
-
-    .greeting {
-      text-align: center;
-      margin-bottom: 50px;
-    }
-
-    .greeting h1 {
-      font-family: 'Bebas Neue', cursive;
-      font-size: 56px;
-      letter-spacing: 3px;
-      margin-bottom: 8px;
-    }
-
-    .greeting h1 span {
-      color: #00bfff;
-    }
-
-    .greeting p {
-      color: #888;
-      font-size: 14px;
-    }
-
-    .choices {
-      display: flex;
-      gap: 40px;
-      margin-bottom: 40px;
-    }
-
-    .choice {
-      width: 320px;
-      padding: 40px 30px;
-      border-radius: 12px;
-      text-align: center;
-      cursor: pointer;
-      transition: transform 0.2s, box-shadow 0.2s, border-color 0.3s;
-      text-decoration: none;
-      color: #fff;
-      position: relative;
-    }
-
-    .choice:hover {
-      transform: translateY(-4px);
-    }
-
-    .choice.classic {
-      background: linear-gradient(135deg, #0d1b2a, #1b2d45);
-      border: 2px solid #00bfff;
-      box-shadow: 0 4px 30px rgba(0, 191, 255, 0.15);
-    }
-
-    .choice.classic:hover {
-      box-shadow: 0 8px 40px rgba(0, 191, 255, 0.3);
-    }
-
-    .choice.classic .default-badge {
-      position: absolute;
-      top: -10px;
-      right: -10px;
-      background: #00bfff;
-      color: #0a0a1a;
-      font-size: 10px;
-      font-weight: 700;
-      padding: 4px 10px;
-      border-radius: 20px;
-      letter-spacing: 0.5px;
-    }
-
-    .choice.game {
-      background: linear-gradient(135deg, #1a0a2e, #2d1b45);
-      border: 2px solid #555;
-      box-shadow: 0 4px 30px rgba(100, 100, 100, 0.1);
-    }
-
-    .choice.game:hover {
-      border-color: #00ff88;
-      box-shadow: 0 8px 40px rgba(0, 255, 136, 0.2);
-    }
-
-    .choice-icon {
-      font-size: 40px;
-      margin-bottom: 16px;
-    }
-
-    .choice h2 {
-      font-family: 'Bebas Neue', cursive;
-      font-size: 26px;
-      letter-spacing: 2px;
-      margin-bottom: 8px;
-    }
-
-    .choice.game h2 {
-      font-family: 'Press Start 2P', cursive;
-      font-size: 14px;
-      line-height: 1.6;
-    }
-
-    .choice p {
-      font-size: 13px;
-      color: #999;
-      line-height: 1.5;
-    }
-
-    .countdown {
-      text-align: center;
-      color: #666;
-      font-size: 13px;
-    }
-
-    .countdown .timer {
-      display: inline-block;
-      width: 28px;
-      height: 28px;
-      line-height: 28px;
-      border-radius: 50%;
-      background: rgba(0, 191, 255, 0.15);
-      color: #00bfff;
-      font-weight: 700;
-      font-size: 14px;
-      margin-left: 6px;
-      vertical-align: middle;
-    }
-
-    .progress-bar {
-      width: 200px;
-      height: 3px;
-      background: #222;
-      border-radius: 2px;
-      margin: 12px auto 0;
-      overflow: hidden;
-    }
-
-    .progress-fill {
-      height: 100%;
-      background: #00bfff;
-      border-radius: 2px;
-      width: 100%;
-      transition: width 1s linear;
-    }
-
-    /* Mobile */
-    @media (max-width: 768px) {
-      .choices {
-        flex-direction: column;
-        gap: 20px;
-        padding: 0 20px;
-      }
-
-      .choice {
-        width: 100%;
-      }
-
-      .greeting h1 {
-        font-size: 40px;
-      }
-    }
-  </style>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800&family=Big+Shoulders+Text:wght@500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/site.css">
 </head>
 <body>
 
-  <div class="greeting">
-    <h1>RANABIR <span>BASU</span></h1>
-    <p>Choose your experience</p>
-  </div>
+  <canvas id="strata" aria-hidden="true"></canvas>
 
-  <div class="choices">
-    <a href="portfolio/" class="choice classic" id="classicChoice">
-      <span class="default-badge">DEFAULT</span>
-      <div class="choice-icon">📄</div>
-      <h2>PORTFOLIO</h2>
-      <p>Clean, professional overview of my journey, experience, and projects.</p>
-    </a>
+  <header class="nav">
+    <a class="mark" href="#top" aria-label="Back to top">RB</a>
+    <nav aria-label="Sections">
+      <a href="#layers">Layers</a>
+      <a href="#projects">Projects</a>
+      <a href="#contact">Contact</a>
+    </nav>
+  </header>
 
-    <a href="quest/" class="choice game" id="gameChoice">
-      <div class="choice-icon">🎮</div>
-      <h2>QUEST LOG</h2>
-      <p>An interactive RPG-style walkthrough of my life. Scroll to explore.</p>
-    </a>
-  </div>
+  <main>
 
-  <div class="countdown" id="countdown">
-    Redirecting to portfolio in <span class="timer" id="timer">5</span>
-    <div class="progress-bar">
-      <div class="progress-fill" id="progressFill"></div>
+    <section class="hero" id="top">
+      <div class="wrap hero-intro">
+        <h1>Ranabir Basu</h1>
+        <img class="portrait" src="assets/headshot.jpg" alt="Ranabir Basu, smiling, by a lake on the IIM Calcutta campus" width="72" height="72">
+        <p class="lede">Associate on the India Credit team at Ascertis Credit. Trained as a mining and financial engineer at IIT&nbsp;Kharagpur, then an MBA at IIM&nbsp;Calcutta. I build software when the models are done.</p>
+        <p class="how">Read this page like a borehole log: newest rock on top, oldest at the bottom. An old habit from the mining degree.</p>
+      </div>
+      <p class="cue" id="cue">Scroll to drill down</p>
+    </section>
+
+    <div id="layers">
+
+      <section class="formation f-mumbai" data-from="2026.25" data-to="2026.82" data-lith="sand" aria-labelledby="f-mumbai">
+        <div class="wrap">
+          <div class="panel">
+            <header class="f-head">
+              <h2 id="f-mumbai">Mumbai Formation</h2>
+              <p class="f-years">2026 to today</p>
+              <p class="lith">Sandstone, still settling.</p>
+            </header>
+            <ol class="entries">
+              <li class="entry" data-at="2026.8">
+                <div class="entry-head">
+                  <h3>Ascertis Credit</h3>
+                  <span class="when">From 2026</span>
+                </div>
+                <p class="role">Associate, India Credit</p>
+                <p>Joined full time after the MBA, on the same team I interned with in 2025. Private credit in India: finding the deals, underwriting them, and keeping watch once they close.</p>
+              </li>
+            </ol>
+          </div>
+        </div>
+      </section>
+
+      <section class="formation f-joka" data-from="2024.5" data-to="2026.25" data-lith="shale" aria-labelledby="f-joka">
+        <div class="wrap">
+          <div class="panel">
+            <header class="f-head">
+              <h2 id="f-joka">Joka Formation</h2>
+              <p class="f-years">2024 to 2026</p>
+              <p class="lith">Shale. Laid down fast, under a lot of pressure.</p>
+            </header>
+            <ol class="entries">
+              <li class="entry" data-at="2026.2">
+                <div class="entry-head">
+                  <h3>IIM Calcutta</h3>
+                  <span class="when">2024 to 2026</span>
+                </div>
+                <p class="role">Master of Business Administration</p>
+                <p>Two years in Joka. Outside class I built and ran the software behind the Finance &amp; Investments Club: four apps, one monorepo.</p>
+              </li>
+              <li class="entry" data-at="2025.4">
+                <div class="entry-head">
+                  <h3>Ascertis Credit</h3>
+                  <span class="when">Apr to May 2025</span>
+                </div>
+                <p class="role">Summer intern, India Credit</p>
+                <p>Worked on live private credit deals in metals and infrastructure, supported fund materials, and built a framework for strategic origination. Converted to a pre-placement offer, which is where the top layer comes from.</p>
+              </li>
+            </ol>
+          </div>
+        </div>
+      </section>
+
+      <section class="formation f-kgp" data-from="2019.5" data-to="2024.5" data-lith="lime" aria-labelledby="f-kgp">
+        <div class="wrap">
+          <div class="panel">
+            <header class="f-head">
+              <h2 id="f-kgp">Kharagpur Formation</h2>
+              <p class="f-years">2019 to 2024</p>
+              <p class="lith">Limestone. Five years of slow, steady build-up.</p>
+            </header>
+            <ol class="entries">
+              <li class="entry" data-at="2024.4">
+                <div class="entry-head">
+                  <h3>IIT Kharagpur</h3>
+                  <span class="when">2019 to 2024</span>
+                </div>
+                <p class="role">Dual degree, B.Tech and M.Tech</p>
+                <p>B.Tech in Mining Engineering, M.Tech in Financial Engineering, CGPA 8.4 out of 10. First I learned how to read rock, then how to price risk.</p>
+              </li>
+              <li class="entry" data-at="2023.55">
+                <div class="entry-head">
+                  <h3>DC Advisory</h3>
+                  <span class="when">May to Jul 2023</span>
+                </div>
+                <p class="role">Investment banking intern</p>
+                <p>Financial evaluations, market analysis and deal sourcing across sectors, including spotting acquisition opportunities for live deals. Received a pre-placement offer, and turned it down to do an MBA.</p>
+              </li>
+              <li class="entry" data-at="2023.1">
+                <div class="entry-head">
+                  <h3>Venwiz</h3>
+                  <span class="when">Dec 2022 to Feb 2023</span>
+                </div>
+                <p class="role">Strategy intern</p>
+                <p>Streamlined vendor discovery and procurement for a B2B platform, and designed tools to make the client experience smoother.</p>
+              </li>
+              <li class="entry" data-at="2022.65">
+                <div class="entry-head">
+                  <h3>Snapdeal</h3>
+                  <span class="when">Jun to Aug 2022</span>
+                </div>
+                <p class="role">Product and user growth intern</p>
+                <p>Led the relaunch of the checkout donation feature with Give India and Akshaya Patra, and coordinated the API work that put Snapdeal on the Open Network for Digital Commerce.</p>
+              </li>
+              <li class="entry" data-at="2022.3">
+                <div class="entry-head">
+                  <h3>IIM Bangalore</h3>
+                  <span class="when">Feb to Apr 2022</span>
+                </div>
+                <p class="role">Research intern</p>
+                <p>With Prof. Manaswini Bhalla, tested whether Supreme Court judgements depend on the caste of petitioners, respondents and judges. Built the web crawler and sentiment analysis pipeline behind it.</p>
+              </li>
+            </ol>
+            <div class="fossils" data-at="2020.6">
+              <h3>Fossils from this layer</h3>
+              <ul>
+                <li><strong>CFA Institute Research Challenge.</strong> National champions; represented India at the Asia Pacific round.</li>
+                <li><strong>Published</strong> in the North American Journal of Economics and Finance.</li>
+                <li><strong>Inter IIT Tech Meet.</strong> Gold, silver and bronze across machine learning, robotics and supply chain events.</li>
+                <li><strong>Hult Prize.</strong> Global top-five nominee.</li>
+                <li><strong>International Relations Cell.</strong> Brought in ₹98 lakh for the cell, and designed most of its posters.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="formation f-rkm" data-from="2010" data-to="2018.4" data-lith="granite" aria-labelledby="f-rkm">
+        <div class="wrap">
+          <div class="panel">
+            <header class="f-head">
+              <h2 id="f-rkm">Narendrapur Bedrock</h2>
+              <p class="f-years">2010 to 2018</p>
+              <p class="lith">Granite. Everything above rests on it.</p>
+            </header>
+            <ol class="entries">
+              <li class="entry" data-at="2018.3">
+                <div class="entry-head">
+                  <h3>Ramakrishna Mission Vidyalaya, Narendrapur</h3>
+                  <span class="when">2010 to 2018</span>
+                </div>
+                <p class="role">School</p>
+                <p>Higher secondary: 90%. Secondary: 92.14%.</p>
+              </li>
+            </ol>
+          </div>
+        </div>
+      </section>
+
     </div>
-  </div>
 
-  <script>
-    var seconds = 5;
-    var timerEl = document.getElementById('timer');
-    var progressEl = document.getElementById('progressFill');
-    var countdownEl = document.getElementById('countdown');
-    var cancelled = false;
+    <section class="projects" id="projects" aria-labelledby="projects-title">
+      <div class="wrap">
+        <h2 id="projects-title">Built after hours</h2>
+        <p class="intro">Credit is the day job. These are the things I make on evenings and weekends, mostly in Python, TypeScript and Swift, shipped on FastAPI, React, Supabase and Vercel. Posters in Photoshop and Illustrator when someone asks nicely.</p>
 
-    // Start progress bar animation
-    setTimeout(function () {
-      progressEl.style.width = '0%';
-    }, 50);
+        <div class="proj-group">
+          <h3 class="proj-cat">Trading and quant</h3>
+          <ul>
+            <li class="proj">
+              <span class="proj-name">QuantLab</span>
+              <p>A quantitative trading platform for Indian equities. Event-driven backtester with 15+ strategies, a DuckDB data lake, Numba-accelerated loops, live broker integration, ML regime detection and a real-time React dashboard.</p>
+            </li>
+          </ul>
+        </div>
 
-    var interval = setInterval(function () {
-      if (cancelled) return;
-      seconds--;
-      timerEl.textContent = seconds;
-      if (seconds <= 0) {
-        clearInterval(interval);
-        window.location.href = 'portfolio/';
-      }
-    }, 1000);
+        <div class="proj-group">
+          <h3 class="proj-cat">AI and automation</h3>
+          <ul>
+            <li class="proj">
+              <span class="proj-name">Nexus</span>
+              <p>Runs Claude Code and Codex CLI together as one coordinated swarm of agents. <a href="https://github.com/ranabirbasu12/WhatToBuildNext" target="_blank" rel="noopener">Read the code</a></p>
+            </li>
+            <li class="proj">
+              <span class="proj-name">WhisperDash</span>
+              <p>Offline dictation for macOS, running mlx-whisper on Apple Silicon. Nothing leaves the laptop.</p>
+            </li>
+            <li class="proj">
+              <span class="proj-name">OrpheusAI</span>
+              <p>An AI-powered iOS app, written in Swift.</p>
+            </li>
+          </ul>
+        </div>
 
-    // Cancel countdown if user hovers on game choice
-    document.getElementById('gameChoice').addEventListener('mouseenter', function () {
-      cancelled = true;
-      clearInterval(interval);
-      countdownEl.style.opacity = '0';
-    });
+        <div class="proj-group">
+          <h3 class="proj-cat">iOS</h3>
+          <ul>
+            <li class="proj">
+              <span class="proj-name">SkyTrace</span>
+              <p>Flight tracking that works with the phone in airplane mode. Reads GNSS directly and draws high-altitude maps, no airline wifi or internet needed.</p>
+            </li>
+            <li class="proj">
+              <span class="proj-name">Breathe</span>
+              <p>A calm companion app for quitting a habit, one day at a time.</p>
+            </li>
+          </ul>
+        </div>
 
-    // Also cancel on any click (the link will handle navigation)
-    document.querySelectorAll('.choice').forEach(function (el) {
-      el.addEventListener('click', function () {
-        cancelled = true;
-        clearInterval(interval);
-      });
-    });
-  </script>
+        <div class="proj-group">
+          <h3 class="proj-cat">Web</h3>
+          <ul>
+            <li class="proj">
+              <span class="proj-name">Finance Club Platform</span>
+              <p>The Turborepo behind the Finance &amp; Investments Club at IIM Calcutta: admin portal, club site, summit site and RSVP portal. QR check-in, bulk email, live analytics and digital boarding passes. React 19, TypeScript, Supabase.</p>
+            </li>
+            <li class="proj">
+              <span class="proj-name">HostelSync</span>
+              <p>A progressive web app for booking hostel laundry and shared resources, with offline support and role-based access. <a href="https://github.com/ranabirbasu12/hostelsync-pwa" target="_blank" rel="noopener">Read the code</a></p>
+            </li>
+            <li class="proj">
+              <span class="proj-name">Stonehedge Ladakh</span>
+              <p>A full rebuild of a Ladakh hotel's website, in TypeScript.</p>
+            </li>
+            <li class="proj">
+              <span class="proj-name">Anulok</span>
+              <p>An e-magazine I built for my father.</p>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </section>
 
+    <section class="contact" id="contact" aria-labelledby="contact-title">
+      <div class="wrap">
+        <h2 id="contact-title">Get in touch</h2>
+        <div class="mail-row">
+          <a class="mail" href="mailto:ranabirbasu12@gmail.com">ranabirbasu12@gmail.com</a>
+          <button class="copy" type="button" data-copy="ranabirbasu12@gmail.com">Copy email</button>
+        </div>
+        <ul class="elsewhere">
+          <li><a href="https://www.linkedin.com/in/ranabir-b-ab2374113" target="_blank" rel="noopener">LinkedIn</a></li>
+          <li><a href="https://github.com/ranabirbasu12" target="_blank" rel="noopener">GitHub</a></li>
+          <li><a href="tel:+919007340609">+91 90073 40609</a></li>
+        </ul>
+        <p class="offhours">Away from a spreadsheet: trading my own book, football (Messi, always), painting, music, and more books than I have shelves for.</p>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="foot">
+    <div class="wrap">
+      <span>&copy; 2026 Ranabir Basu</span>
+      <a href="quest/">Prefer pixels? Play the 8-bit version</a>
+    </div>
+  </footer>
+
+  <script src="assets/site.js"></script>
 </body>
 </html>
