@@ -1,171 +1,99 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ranabir Basu | Quest Log</title>
-
-    <!-- 8-bit Retro Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
-
-    <link rel="stylesheet" href="css/style.css?v=1.5">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>KGP: an 8-bit open world</title>
+  <meta name="description" content="Walk, cycle and quest across the real IIT Kharagpur campus, 2019 to 2024. An 8-bit RPG by Ranabir Basu.">
+  <meta name="theme-color" content="#1b2a1b">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' shape-rendering='crispEdges'%3E%3Crect width='16' height='16' fill='%235c9e3f'/%3E%3Crect x='3' y='4' width='10' height='9' fill='%23b4553c'/%3E%3Crect x='3' y='3' width='10' height='2' fill='%23ca6c50'/%3E%3Crect x='7' y='9' width='2' height='4' fill='%236b4128'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/game.css">
 </head>
-
 <body>
+  <canvas id="world" aria-label="The IIT Kharagpur campus"></canvas>
 
-    <!-- CRT Scanline Overlay -->
-    <div class="crt-overlay"></div>
-
-    <!-- Boot / Start Screen -->
-    <div class="boot-screen" id="boot-screen">
-        <div class="boot-content">
-            <h1 class="glitch-text" data-text="RANABIR_OS v1.0">RANABIR_OS v1.0</h1>
-            <div class="terminal-lines" id="terminal-lines">
-                <p>> Initializing PixiJS engine...</p>
-                <p>> Loading sprite sheets...</p>
-                <p>> Building tilemap scenes...</p>
-                <p>> Calibrating HD-2D shaders...</p>
-                <p>> SYSTEM READY.</p>
-            </div>
-            <div class="loading-bar">
-                <div class="loading-fill" id="loading-fill"></div>
-            </div>
-            <p class="start-prompt blink" id="start-prompt" style="display:none;">[ CLICK or SCROLL ] TO START</p>
-        </div>
+  <div class="hud" aria-live="polite">
+    <div class="hud-left">
+      <div class="panel quest empty" id="objective">
+        <div class="date" id="hud-date">Jul 2019</div>
+        <div class="obj" id="obj-text"></div>
+      </div>
     </div>
-
-    <!-- PixiJS Game Canvas Container -->
-    <div id="game-canvas"></div>
-
-    <!-- HUD Overlay (HTML on top of canvas) -->
-    <div class="hud" id="game-hud">
-        <div class="hud-row">
-            <span class="hud-label">LVL</span>
-            <span class="hud-value" id="hud-level">??</span>
-            <span class="hud-label">CLASS</span>
-            <span class="hud-value" id="hud-class">???</span>
-        </div>
-        <div class="hud-row">
-            <div class="xp-bar">
-                <div class="xp-fill" id="hud-xp"></div>
-            </div>
-        </div>
-        <div class="hud-row">
-            <span class="hud-label">HP</span>
-            <div class="hp-bar">
-                <div class="hp-fill" id="hud-hp"></div>
-            </div>
-        </div>
-        <div class="hud-quest" id="hud-quest">QUEST: Begin the journey.</div>
+    <div class="hud-right">
+      <div class="panel clock"><span id="hud-clock">4:30 pm</span><span class="lore" title="Campus signs read">Signs <span id="hud-lore">0/0</span></span></div>
+      <div class="buttons">
+        <button type="button" class="pbtn" data-open="map" title="Map (M)">Map</button>
+        <button type="button" class="pbtn" data-open="journal" title="Journal (J)">Journal</button>
+        <button type="button" class="pbtn" id="btn-music" aria-pressed="true" title="Music">&#9835;</button>
+      </div>
     </div>
+  </div>
 
-    <div class="inventory-btn" id="inventory-btn" style="display:none;">
-        <span class="bag-icon">🎒</span>
-        <span class="bag-label" id="bag-xp">0 XP</span>
-        <div class="click-pulse"></div>
+  <div id="toast" role="status"></div>
+  <div id="banner"></div>
+
+  <div id="dialog" class="panel" role="dialog" aria-live="polite">
+    <div id="dlg-name"></div>
+    <p id="dlg-text"></p>
+    <div id="dlg-choices"></div>
+    <span id="dlg-more" aria-hidden="true">&#9660;</span>
+  </div>
+
+  <div id="mapview" class="overlay">
+    <div class="panel sheet">
+      <div class="sheet-head"><h2>IIT Kharagpur</h2><button type="button" class="pbtn" data-close>Close</button></div>
+      <canvas id="mapcanvas"></canvas>
+      <p class="fine">You are the red dot. Yellow is your next stop. White squares are signs you&rsquo;ve read. 1 tile = 8 m. Map data &copy; OpenStreetMap contributors.</p>
     </div>
+  </div>
 
-    <!-- Inventory Modal -->
-    <div id="inventory-modal" class="pixel-modal hidden">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>SKILLS & ITEMS</h2>
-                <button id="close-inventory" class="close-btn">X</button>
-            </div>
-            <div class="modal-body custom-scrollbar">
-                <div class="inventory-grid" id="inventory-grid">
-                    <!-- Populated by JS -->
-                </div>
-            </div>
-        </div>
+  <div id="journal" class="overlay">
+    <div class="panel sheet">
+      <div class="sheet-head"><h2>Journal</h2><button type="button" class="pbtn" data-close>Close</button></div>
+      <div class="cols">
+        <section><h3>Quests</h3><ul id="j-quests"></ul></section>
+        <section><h3>Things you carry</h3><ul id="j-items"></ul></section>
+      </div>
+      <p class="fine" id="j-lore"></p>
     </div>
+  </div>
 
-    <!-- Dialogue Box Overlay -->
-    <div class="dialogue-overlay" id="dialogue-overlay">
-        <div class="dialogue-box">
-            <p id="dialogue-text"></p>
-            <span class="dialogue-cursor blink">_</span>
-        </div>
+  <div id="touch" aria-hidden="true">
+    <div id="stick"><div id="knob"></div></div>
+    <button type="button" class="tbtn b" data-press="bike">B</button>
+    <button type="button" class="tbtn a" data-press="act">A</button>
+  </div>
+
+  <div id="title">
+    <div class="title-inner">
+      <h1>KGP</h1>
+      <p class="sub">An 8-bit open world. IIT Kharagpur, 2019 to 2024.</p>
+      <div class="menu">
+        <button type="button" class="pbtn big" id="btn-continue" hidden>Continue</button>
+        <button type="button" class="pbtn big" id="btn-new">New game</button>
+      </div>
+      <p class="keys">Move: arrows or WASD &nbsp; Talk: Space &nbsp; Cycle: B &nbsp; Map: M &nbsp; Journal: J</p>
+      <p class="credits">By <a href="../">Ranabir Basu</a>. The campus is built from real OpenStreetMap data (&copy; OpenStreetMap contributors). Facts from iitkgp.ac.in, Wikipedia and <a href="https://wiki.metakgp.org/" target="_blank" rel="noopener">metakgp</a>.</p>
     </div>
+  </div>
 
-    <!-- Inspect Prompt -->
-    <div id="inspect-prompt">[CLICK] TO INSPECT</div>
-
-    <!-- Scene Label Overlay -->
-    <div class="scene-label" id="scene-label"></div>
-
-    <!-- Persistent Bottom Information Box -->
-    <div class="phase-info-box" id="phase-info-box">
-        <div class="phase-info-header">
-            <span id="info-title">PHASE TITLE</span>
-            <span class="info-stats">
-                <span id="info-role">ROLE</span> | <span id="info-xp">+XP</span>
-            </span>
-        </div>
-        <div class="phase-info-body">
-            <p id="info-desc"></p>
-            <span class="dialogue-cursor blink">_</span>
-        </div>
-    </div>
-
-    <!-- Scroll Spacer (GSAP ScrollTrigger drives this) -->
-    <div id="scroll-spacer"></div>
-
-    <!-- Vertical Section: Achievements & Contact -->
-    <section class="vertical-zone" id="vertical-zone">
-
-        <div class="retro-container">
-            <h2 class="pixel-heading">ACHIEVEMENTS UNLOCKED</h2>
-
-            <div class="pixel-grid">
-                <div class="pixel-card">
-                    <div class="icon trophy-icon"></div>
-                    <h3>National Champion</h3>
-                    <p>CFA Institute Research Challenge. Defeated 48 guilds to represent India at APAC.</p>
-                </div>
-                <div class="pixel-card">
-                    <div class="icon book-icon"></div>
-                    <h3>Published Scholar</h3>
-                    <p>North American Journal of Economics & Finance. +10 to Intelligence.</p>
-                </div>
-                <div class="pixel-card">
-                    <div class="icon medal-icon"></div>
-                    <h3>Inter IIT Medals</h3>
-                    <p>Gold, Silver, Bronze across ML, Robotics, and Supply Chain tech meets.</p>
-                </div>
-                <div class="pixel-card">
-                    <div class="icon globe-icon"></div>
-                    <h3>Global Top 5</h3>
-                    <p>Hult Prize Nominee. Secured INR 9.8M gold for IIT KGP IRC.</p>
-                </div>
-            </div>
-        </div>
-
-        <div class="retro-container contact-zone">
-            <h2 class="pixel-heading">INITIATE CO-OP MODE?</h2>
-            <div class="action-menu">
-                <a href="mailto:ranabirbasu12@gmail.com" class="btn-pixel">SEND_MESSAGE</a>
-                <a href="https://www.linkedin.com/in/ranabir-b-ab2374113/" target="_blank"
-                    class="btn-pixel">LINKEDIN_PROFILE</a>
-                <a href="assets/ranabir_basu_cv.pdf" target="_blank" class="btn-pixel">DOWNLOAD_SAVE_FILE</a>
-            </div>
-            <p class="credits">&copy; 2026 RANABIR BASU // GAME OVER</p>
-        </div>
-
-    </section>
-
-    <!-- Libraries -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/7.3.2/pixi.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.4/howler.min.js"></script>
-
-    <!-- Game Code -->
-    <script src="js/art.js?v=1.8"></script>
-    <script src="js/game.js?v=1.8"></script>
+  <script src="js/kgp-map.js"></script>
+  <script src="js/art.js"></script>
+  <script src="js/engine.js"></script>
+  <script src="js/story.js"></script>
+  <script>
+    (function () {
+      var c = document.getElementById('btn-continue'), n = document.getElementById('btn-new');
+      if (window.GAME.hasSave()) { c.hidden = false; c.focus(); } else { n.focus(); }
+      c.addEventListener('click', function () { window.GAME.begin(true); });
+      n.addEventListener('click', function () {
+        if (window.GAME.hasSave() && !window.confirm('Start over? Your saved progress will be replaced.')) return;
+        window.GAME.begin(false);
+      });
+    })();
+  </script>
 </body>
-
 </html>

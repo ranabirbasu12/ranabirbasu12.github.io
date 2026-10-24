@@ -1,1430 +1,343 @@
-/**
- * art.js — Pixel Art Generation System
- * Creates all visual textures programmatically for the RPG portfolio.
- * Uses Canvas 2D, converts to PIXI.Texture (PixiJS v7).
- */
+/* Pixel art, all drawn in code.
+   Tiles are drawn straight into map chunks (they need their neighbours for edges and walls);
+   people are drawn per frame from a small look description. */
 
 (function () {
-    'use strict';
+  'use strict';
 
-    window.GAME = window.GAME || {};
+  var T = { GRASS: 0, TREE: 1, ROAD: 2, PATH: 3, BUILDING: 4, WATER: 5, PITCH: 6, PARK: 7, RAIL: 8, PLAZA: 9, FARM: 10, SAND: 11 };
+  var CHARS = 'gTr.BwpkR=fs';
+  var S = 16;
 
-    // =========================================================================
-    // COLOR PALETTES PER TIER
-    // =========================================================================
+  var P = {
+    grass: '#5c9e3f', grassDark: '#4c8a35', grassLight: '#70b24b', blade: '#3e7a2e',
+    park: '#69ae4a', parkDark: '#5a9c40',
+    pitch: '#55a046', pitchStripe: '#5fab4f', pitchLine: '#e9f2dc',
+    canopy: '#2f6e34', canopyLight: '#46923f', canopyHi: '#5aa84a', canopyDark: '#20502a', trunk: '#6b4a2b',
+    road: '#5d6169', roadDark: '#52565e', roadLight: '#686c74', kerb: '#a3a39a', kerbDark: '#7f7f77',
+    path: '#bd9f6c', pathDark: '#a98b5b', pathLight: '#cdb07e',
+    water: '#3b7cc0', waterDark: '#2f69a8', waterLight: '#6aa6dd', bank: '#8a7a52',
+    ballast: '#8b8172', sleeper: '#5b4330', rail: '#c3c7cb',
+    plaza: '#cbc1ae', plazaDark: '#b7ad9a',
+    farm: '#a08e3e', farmDark: '#857531',
+    sand: '#d8c58f',
+    wall: '#e6d8bc', wallShade: '#cdbd9d', wallDark: '#9c8b6c', window: '#3d5a73', windowLit: '#ffd77a', door: '#6b4128',
+    brick: '#b4553c', brickDark: '#8e3f2c', brickLight: '#c96a4f',
+    shadow: 'rgba(20,30,20,0.28)'
+  };
 
-    var PALETTES = {
-        base: {
-            H: 0x2d1b0e, h: 0x3d2b1e, S: 0xf4c794, s: 0xd4a574,
-            W: 0xffffff, E: 0x1a1a2e, B: 0x2d1b0e, M: 0xc4956a,
-            N: 0xd4a574, T: 0x3b82f6, t: 0x2563eb, D: 0x60a5fa,
-            C: 0x2563eb, A: 0x3b82f6, a: 0x2563eb, R: 0xf4c794,
-            P: 0x4a5568, p: 0x374151, L: 0x1e293b,
-            O: 0x1a1a2e, o: 0x2d3748
-        },
-        freshman: {
-            H: 0x1a1a2e, h: 0x2d3748, S: 0xf4c794, s: 0xd4a574,
-            W: 0xffffff, E: 0x1a1a2e, B: 0x1a1a2e, M: 0xc4956a,
-            N: 0xd4a574, T: 0x3b82f6, t: 0x2563eb, D: 0x60a5fa,
-            C: 0x2563eb, A: 0x3b82f6, a: 0x2563eb, R: 0xf4c794,
-            P: 0x4a5568, p: 0x374151, L: 0x1e293b,
-            O: 0xd69e2e, o: 0xe2b340
-        },
-        mid: {
-            H: 0x1a1a2e, h: 0x2d3748, S: 0xf4c794, s: 0xd4a574,
-            W: 0xffffff, E: 0x1a1a2e, B: 0x1a1a2e, M: 0xc4956a,
-            N: 0xd4a574, T: 0x38b2ac, t: 0x2d9a8f, D: 0x4fd1c5,
-            C: 0x2d9a8f, A: 0x38b2ac, a: 0x2d9a8f, R: 0xf4c794,
-            P: 0x2d3748, p: 0x1e293b, L: 0x1e293b,
-            O: 0x4a5568, o: 0x5a6578
-        },
-        formal: {
-            H: 0x1a1a2e, h: 0x2d3748, S: 0xf4c794, s: 0xd4a574,
-            W: 0xffffff, E: 0x1a1a2e, B: 0x1a1a2e, M: 0xc4956a,
-            N: 0xd4a574, T: 0xe2e8f0, t: 0xcbd5e0, D: 0xf8fafc,
-            C: 0xcbd5e0, A: 0xe2e8f0, a: 0xcbd5e0, R: 0xf4c794,
-            P: 0x1a202c, p: 0x111827, L: 0x1e293b,
-            O: 0x2d3748, o: 0x3d4758, I: 0xef4444
-        },
-        graduate: {
-            H: 0x1a1a2e, h: 0x2d3748, S: 0xf4c794, s: 0xd4a574,
-            W: 0xffffff, E: 0x1a1a2e, B: 0x1a1a2e, M: 0xc4956a,
-            N: 0xd4a574, T: 0x1a202c, t: 0x111827, D: 0x2d3748,
-            C: 0x111827, A: 0x1a202c, a: 0x111827, R: 0xf4c794,
-            P: 0x1a202c, p: 0x111827, L: 0x1a202c,
-            O: 0x2d3748, o: 0x3d4758, K: 0x1a202c, k: 0xfacc15
-        },
-        senior: {
-            H: 0x1a1a2e, h: 0x2d3748, S: 0xf4c794, s: 0xd4a574,
-            W: 0xffffff, E: 0x1a1a2e, B: 0x1a1a2e, M: 0xc4956a,
-            N: 0xd4a574, T: 0xe2e8f0, t: 0xcbd5e0, D: 0xf8fafc,
-            C: 0xcbd5e0, A: 0xe2e8f0, a: 0xcbd5e0, R: 0xf4c794,
-            P: 0x1a202c, p: 0x111827, L: 0x1e293b,
-            O: 0x2d3748, o: 0x3d4758,
-            X: 0x1a365d, G: 0x94a3b8, g: 0xbfdbfe
-        },
-        'formal-coat': {
-            H: 0x1a1a2e, h: 0x2d3748, S: 0xf4c794, s: 0xd4a574,
-            W: 0xffffff, E: 0x1a1a2e, B: 0x1a1a2e, M: 0xc4956a,
-            N: 0xd4a574, T: 0xe2e8f0, t: 0xcbd5e0, D: 0xf8fafc,
-            C: 0xcbd5e0, A: 0xe2e8f0, a: 0xcbd5e0, R: 0xf4c794,
-            P: 0x1a202c, p: 0x111827, L: 0x1e293b,
-            O: 0x2d3748, o: 0x3d4758, I: 0xef4444, X: 0x0f172a
-        },
-        final: {
-            H: 0x1a1a2e, h: 0x2d3748, S: 0xf4c794, s: 0xd4a574,
-            W: 0xffffff, E: 0x1a1a2e, B: 0x1a1a2e, M: 0xc4956a,
-            N: 0xd4a574, T: 0xffffff, t: 0xe2e8f0, D: 0xf8fafc,
-            C: 0xe2e8f0, A: 0xffffff, a: 0xe2e8f0, R: 0xf4c794,
-            P: 0x0f172a, p: 0x0a0f1a, L: 0x1e293b,
-            O: 0x1a202c, o: 0x2a303c,
-            X: 0x0f172a, I: 0x3b82f6, G: 0x60a5fa, g: 0x93c5fd
-        }
-    };
+  var ROOFS = [
+    ['#a64a36', '#c25e45', '#7f3726'],  // terracotta
+    ['#6f7f8e', '#8494a3', '#566472'],  // slate
+    ['#b8904d', '#cea660', '#8e6c35'],  // ochre
+    ['#7f5b4c', '#99705f', '#5f4237'],  // brown
+    ['#5d7d68', '#729580', '#465e4f'],  // green tin
+    ['#9a9a96', '#b2b2ad', '#787874'],  // concrete
+    ['#8a4f5d', '#a4636f', '#673a45']   // plum
+  ];
 
-    // =========================================================================
-    // RENDERING HELPER
-    // =========================================================================
+  // Buildings that should look like themselves.
+  var SPECIAL_ROOF = { brick: ['#b4553c', '#ca6c50', '#86392a'] };
 
-    function renderSpriteData(rows, palette) {
-        var h = rows.length;
-        var w = rows[0].length;
-        var canvas = document.createElement('canvas');
-        canvas.width = w;
-        canvas.height = h;
-        var ctx = canvas.getContext('2d');
+  function hash(x, y, s) {
+    var h = (x * 374761393 + y * 668265263 + (s || 0) * 2147483647) | 0;
+    h = (h ^ (h >>> 13)) * 1274126177;
+    return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+  }
 
-        for (var y = 0; y < h; y++) {
-            for (var x = 0; x < w; x++) {
-                var ch = rows[y][x];
-                if (ch !== '.' && palette[ch] !== undefined) {
-                    var color = palette[ch];
-                    ctx.fillStyle = '#' + color.toString(16).padStart(6, '0');
-                    ctx.fillRect(x, y, 1, 1);
-                }
-            }
-        }
+  function px(g, x, y, w, h, c) { g.fillStyle = c; g.fillRect(x, y, w, h); }
 
-        var tex = PIXI.Texture.from(canvas, { scaleMode: PIXI.SCALE_MODES.NEAREST });
-        return tex;
+  /* ---------- Ground tiles ---------- */
+
+  function grass(g, x, y, tx, ty, base, dark, light) {
+    px(g, x, y, S, S, base);
+    var n = 3 + Math.floor(hash(tx, ty, 1) * 4);
+    for (var i = 0; i < n; i++) {
+      var bx = x + Math.floor(hash(tx, ty, 10 + i) * 15), by = y + Math.floor(hash(tx, ty, 20 + i) * 14);
+      px(g, bx, by, 1, 2, i % 2 ? dark : P.blade);
+      if (hash(tx, ty, 30 + i) > 0.7) px(g, bx + 1, by + 1, 1, 1, light);
     }
-
-    function renderCanvasTexture(w, h, drawFn) {
-        var canvas = document.createElement('canvas');
-        canvas.width = w;
-        canvas.height = h;
-        var ctx = canvas.getContext('2d');
-        drawFn(ctx, w, h);
-        return PIXI.Texture.from(canvas, { scaleMode: PIXI.SCALE_MODES.NEAREST });
+    if (hash(tx, ty, 2) > 0.93) {
+      // tiny flowers
+      var fc = ['#f2d24b', '#ffffff', '#e86a8a'][Math.floor(hash(tx, ty, 3) * 3)];
+      var fx = x + 3 + Math.floor(hash(tx, ty, 4) * 9), fy = y + 3 + Math.floor(hash(tx, ty, 5) * 9);
+      px(g, fx, fy, 1, 1, fc); px(g, fx + 2, fy + 1, 1, 1, fc); px(g, fx + 1, fy + 2, 1, 1, fc);
     }
+  }
 
-    function hexToCSS(hex) {
-        return '#' + hex.toString(16).padStart(6, '0');
+  function edgeShade(g, x, y, nb, kind, c) {
+    // darken edges that meet a different surface
+    if (nb.n !== kind) px(g, x, y, S, 1, c);
+    if (nb.s !== kind) px(g, x, y + S - 1, S, 1, c);
+    if (nb.w !== kind) px(g, x, y, 1, S, c);
+    if (nb.e !== kind) px(g, x + S - 1, y, 1, S, c);
+  }
+
+  function road(g, x, y, tx, ty, nb) {
+    px(g, x, y, S, S, P.road);
+    for (var i = 0; i < 5; i++) {
+      px(g, x + Math.floor(hash(tx, ty, 40 + i) * 16), y + Math.floor(hash(tx, ty, 50 + i) * 16), 1, 1, i % 2 ? P.roadDark : P.roadLight);
     }
+    var isRoad = function (t) { return t === T.ROAD || t === T.PATH || t === T.PLAZA; };
+    if (!isRoad(nb.n)) { px(g, x, y, S, 2, P.kerb); px(g, x, y + 2, S, 1, P.kerbDark); }
+    if (!isRoad(nb.s)) { px(g, x, y + S - 2, S, 2, P.kerb); }
+    if (!isRoad(nb.w)) { px(g, x, y, 2, S, P.kerb); px(g, x + 2, y, 1, S, P.kerbDark); }
+    if (!isRoad(nb.e)) { px(g, x + S - 2, y, 2, S, P.kerb); }
+  }
 
-    // =========================================================================
-    // CHARACTER SPRITE DATA (32 wide x 48 tall)
-    // 3/4 top-down, facing right
-    // =========================================================================
-
-    // --- BASE IDLE FRAME 0 (standing still) ---
-    var BASE_IDLE_0 = [
-        '................................',  // 0
-        '................................',  // 1
-        '................................',  // 2
-        '..........HHHHHHHhh............',  // 3
-        '.........HHHHHHHHHhh...........',  // 4
-        '........HHHHHHHHHHHhh..........',  // 5
-        '........HHHHHHHHHHHhh..........',  // 6
-        '........HHhhhHHHHHHhh..........',  // 7
-        '........HSSSSSSSSShHh..........',  // 8
-        '........HSSBWWESSSBH...........',  // 9
-        '........HSSBWEESSSBH...........',  // 10
-        '........HSSSSsSSSSSH...........',  // 11
-        '.........SSSsMMsSS.............',  // 12
-        '.........sSSSMMSSs.............',  // 13
-        '..........sNNNNNs..............',  // 14
-        '...........NNNN................',  // 15
-        '.........CCTTTTCC..............',  // 16
-        '........AATTTTTTTAA............',  // 17
-        '........AATTTDTTTTAA...........',  // 18
-        '.......AATTTTDTTTTtAA..........',  // 19
-        '.......AaTTTTTTTTTtaA..........',  // 20
-        '.......AaTTTTTTTTTtaA..........',  // 21
-        '.......AaTTTTTTTTTtaA..........',  // 22
-        '.......RaTTTTTTTTTtaR..........',  // 23
-        '.......RRtTTTTTTTTtRR..........',  // 24
-        '........RtTTTTTTTTtR...........',  // 25
-        '........RLLLLLLLLLR............',  // 26
-        '.........PPPPPPPP..............',  // 27
-        '.........PPPPPPPP..............',  // 28
-        '.........PPPPpPPP..............',  // 29
-        '.........PPPpPPPP..............',  // 30
-        '.........PPPpPPPP..............',  // 31
-        '.........PPPpPPPP..............',  // 32
-        '.........PPP.PPPP..............',  // 33
-        '.........PPP.PPPP..............',  // 34
-        '.........PPp.PPPp..............',  // 35
-        '.........PPp.PPPp..............',  // 36
-        '.........OOO.OOOo..............',  // 37
-        '.........OOo.OOOo..............',  // 38
-        '.........OOo.OOOo..............',  // 39
-        '................................',  // 40
-        '................................',  // 41
-        '................................',  // 42
-        '................................',  // 43
-        '................................',  // 44
-        '................................',  // 45
-        '................................',  // 46
-        '................................'   // 47
-    ];
-
-    // --- BASE IDLE FRAME 1 (breathing — torso shifts 1px, slight arm shift) ---
-    var BASE_IDLE_1 = [
-        '................................',  // 0
-        '................................',  // 1
-        '................................',  // 2
-        '..........HHHHHHHhh............',  // 3
-        '.........HHHHHHHHHhh...........',  // 4
-        '........HHHHHHHHHHHhh..........',  // 5
-        '........HHHHHHHHHHHhh..........',  // 6
-        '........HHhhhHHHHHHhh..........',  // 7
-        '........HSSSSSSSSShHh..........',  // 8
-        '........HSSBWWESSSBH...........',  // 9
-        '........HSSBWEESSSBH...........',  // 10
-        '........HSSSSsSSSSSH...........',  // 11
-        '.........SSSsMMsSS.............',  // 12
-        '.........sSSSMMSSs.............',  // 13
-        '..........sNNNNNs..............',  // 14
-        '...........NNNN................',  // 15
-        '.........CCTTTTCC..............',  // 16
-        '........AATTTTTTAAA............',  // 17
-        '........AATTTDTTTAAA...........',  // 18
-        '.......AATTTTDTTTTtAA..........',  // 19
-        '.......AaTTTTTTTTTtaA..........',  // 20
-        '.......AaTTTTTTTTTtaA..........',  // 21
-        '......AAaTTTTTTTTTtaAA.........',  // 22
-        '......RRaTTTTTTTTTtaRR.........',  // 23
-        '.......RRtTTTTTTTTtRR..........',  // 24
-        '........RtTTTTTTTTtR...........',  // 25
-        '........RLLLLLLLLLR............',  // 26
-        '.........PPPPPPPP..............',  // 27
-        '.........PPPPPPPP..............',  // 28
-        '.........PPPPpPPP..............',  // 29
-        '.........PPPpPPPP..............',  // 30
-        '.........PPPpPPPP..............',  // 31
-        '.........PPPpPPPP..............',  // 32
-        '.........PPP.PPPP..............',  // 33
-        '.........PPP.PPPP..............',  // 34
-        '.........PPp.PPPp..............',  // 35
-        '.........PPp.PPPp..............',  // 36
-        '.........OOO.OOOo..............',  // 37
-        '.........OOo.OOOo..............',  // 38
-        '.........OOo.OOOo..............',  // 39
-        '................................',  // 40
-        '................................',  // 41
-        '................................',  // 42
-        '................................',  // 43
-        '................................',  // 44
-        '................................',  // 45
-        '................................',  // 46
-        '................................'   // 47
-    ];
-
-    // --- BASE WALK FRAME 0 (right foot forward, left arm forward, head bob down 1px) ---
-    var BASE_WALK_0 = [
-        '................................',  // 0
-        '................................',  // 1
-        '................................',  // 2
-        '................................',  // 3
-        '..........HHHHHHHhh............',  // 4
-        '.........HHHHHHHHHhh...........',  // 5
-        '........HHHHHHHHHHHhh..........',  // 6
-        '........HHHHHHHHHHHhh..........',  // 7
-        '........HHhhhHHHHHHhh..........',  // 8
-        '........HSSSSSSSSShHh..........',  // 9
-        '........HSSBWWESSSBH...........',  // 10
-        '........HSSBWEESSSBH...........',  // 11
-        '........HSSSSsSSSSSH...........',  // 12
-        '.........SSSsMMsSS.............',  // 13
-        '.........sSSSMMSSs.............',  // 14
-        '..........sNNNNNs..............',  // 15
-        '...........NNNN................',  // 16
-        '.........CCTTTTCC..............',  // 17
-        '........RATTTTTTTAA............',  // 18
-        '.......RRATTTDTTTTAA...........',  // 19
-        '......RRAaTTTDTTTTtaA..........',  // 20
-        '.......RAaTTTTTTTTtaAR.........',  // 21
-        '........AaTTTTTTTTtaARR........',  // 22
-        '........AaTTTTTTTTtaRR.........',  // 23
-        '........RRtTTTTTTTtRR..........',  // 24
-        '........RRtTTTTTTTtR...........',  // 25
-        '.........RLLLLLLLLLR...........',  // 26
-        '.........PPPPPPPP..............',  // 27
-        '.........PPPPPpPP..............',  // 28
-        '.........PPPPpPPP..............',  // 29
-        '..........PPp.PPP..............',  // 30
-        '..........PPp..PPP.............',  // 31
-        '..........PPp..PPPP............',  // 32
-        '..........PP....PPPp...........',  // 33
-        '..........PP....PPPp...........',  // 34
-        '..........OO....OOOo...........',  // 35
-        '.........OOo.....OOo...........',  // 36
-        '.........OOo.....OOo...........',  // 37
-        '................................',  // 38
-        '................................',  // 39
-        '................................',  // 40
-        '................................',  // 41
-        '................................',  // 42
-        '................................',  // 43
-        '................................',  // 44
-        '................................',  // 45
-        '................................',  // 46
-        '................................'   // 47
-    ];
-
-    // --- BASE WALK FRAME 1 (passing / neutral, legs together) ---
-    var BASE_WALK_1 = [
-        '................................',  // 0
-        '................................',  // 1
-        '................................',  // 2
-        '..........HHHHHHHhh............',  // 3
-        '.........HHHHHHHHHhh...........',  // 4
-        '........HHHHHHHHHHHhh..........',  // 5
-        '........HHHHHHHHHHHhh..........',  // 6
-        '........HHhhhHHHHHHhh..........',  // 7
-        '........HSSSSSSSSShHh..........',  // 8
-        '........HSSBWWESSSBH...........',  // 9
-        '........HSSBWEESSSBH...........',  // 10
-        '........HSSSSsSSSSSH...........',  // 11
-        '.........SSSsMMsSS.............',  // 12
-        '.........sSSSMMSSs.............',  // 13
-        '..........sNNNNNs..............',  // 14
-        '...........NNNN................',  // 15
-        '.........CCTTTTCC..............',  // 16
-        '........AATTTTTTTAA............',  // 17
-        '........AATTTDTTTTAA...........',  // 18
-        '.......AATTTTDTTTTtAA..........',  // 19
-        '.......AaTTTTTTTTTtaA..........',  // 20
-        '.......AaTTTTTTTTTtaA..........',  // 21
-        '.......AaTTTTTTTTTtaA..........',  // 22
-        '.......RaTTTTTTTTTtaR..........',  // 23
-        '.......RRtTTTTTTTTtRR..........',  // 24
-        '........RtTTTTTTTTtR...........',  // 25
-        '........RLLLLLLLLLR............',  // 26
-        '.........PPPPPPPP..............',  // 27
-        '.........PPPPPPPP..............',  // 28
-        '.........PPPPpPPP..............',  // 29
-        '.........PPPpPPPP..............',  // 30
-        '.........PPPpPPPP..............',  // 31
-        '.........PPPpPPPP..............',  // 32
-        '.........PPP.PPPP..............',  // 33
-        '.........PPP.PPPP..............',  // 34
-        '.........PPp.PPPp..............',  // 35
-        '.........PPp.PPPp..............',  // 36
-        '.........OOO.OOOo..............',  // 37
-        '.........OOo.OOOo..............',  // 38
-        '.........OOo.OOOo..............',  // 39
-        '................................',  // 40
-        '................................',  // 41
-        '................................',  // 42
-        '................................',  // 43
-        '................................',  // 44
-        '................................',  // 45
-        '................................',  // 46
-        '................................'   // 47
-    ];
-
-    // --- BASE WALK FRAME 2 (left foot forward, right arm forward, head bob down 1px) ---
-    var BASE_WALK_2 = [
-        '................................',  // 0
-        '................................',  // 1
-        '................................',  // 2
-        '................................',  // 3
-        '..........HHHHHHHhh............',  // 4
-        '.........HHHHHHHHHhh...........',  // 5
-        '........HHHHHHHHHHHhh..........',  // 6
-        '........HHHHHHHHHHHhh..........',  // 7
-        '........HHhhhHHHHHHhh..........',  // 8
-        '........HSSSSSSSSShHh..........',  // 9
-        '........HSSBWWESSSBH...........',  // 10
-        '........HSSBWEESSSBH...........',  // 11
-        '........HSSSSsSSSSSH...........',  // 12
-        '.........SSSsMMsSS.............',  // 13
-        '.........sSSSMMSSs.............',  // 14
-        '..........sNNNNNs..............',  // 15
-        '...........NNNN................',  // 16
-        '.........CCTTTTCC..............',  // 17
-        '........AATTTTTTTAR............',  // 18
-        '.......AATTTTDTTTTaRR..........',  // 19
-        '......AAaTTTTDTTTTtaRR.........',  // 20
-        '.......AaTTTTTTTTTtaR..........',  // 21
-        '........AaTTTTTTTTtaA..........',  // 22
-        '........AaTTTTTTTTtaA..........',  // 23
-        '........RRtTTTTTTTtRR..........',  // 24
-        '........RRtTTTTTTTtR...........',  // 25
-        '.........RLLLLLLLLLR...........',  // 26
-        '.........PPPPPPPP..............',  // 27
-        '.........PPpPPPPP..............',  // 28
-        '.........PPPpPPPP..............',  // 29
-        '.........PPP.pPP...............',  // 30
-        '........PPP...PPp..............',  // 31
-        '.......PPPP...PPp..............',  // 32
-        '.......PPPp...PP...............',  // 33
-        '.......PPPp...PP...............',  // 34
-        '......OOOo....OO...............',  // 35
-        '......OOo....OOo...............',  // 36
-        '......OOo....OOo...............',  // 37
-        '................................',  // 38
-        '................................',  // 39
-        '................................',  // 40
-        '................................',  // 41
-        '................................',  // 42
-        '................................',  // 43
-        '................................',  // 44
-        '................................',  // 45
-        '................................',  // 46
-        '................................'   // 47
-    ];
-
-    // Walk frame 3 is same as frame 1 (passing position)
-    var BASE_WALK_3 = BASE_WALK_1;
-
-    // =========================================================================
-    // TIER OVERLAY MODIFICATIONS
-    // =========================================================================
-
-    // These functions take an array of sprite rows (strings) and return modified copies
-    // with tier-specific accessories added.
-
-    function cloneRows(rows) {
-        var out = [];
-        for (var i = 0; i < rows.length; i++) {
-            out.push(rows[i]);
-        }
-        return out;
+  function path(g, x, y, tx, ty, nb) {
+    px(g, x, y, S, S, P.path);
+    for (var i = 0; i < 6; i++) {
+      px(g, x + Math.floor(hash(tx, ty, 60 + i) * 15), y + Math.floor(hash(tx, ty, 70 + i) * 15), 2, 1, i % 2 ? P.pathDark : P.pathLight);
     }
+    // soft grass fringe
+    var c = P.grassDark;
+    if (nb.n === T.GRASS || nb.n === T.TREE) for (var a = 0; a < S; a += 3) px(g, x + a, y, 2, 1 + (a % 2), c);
+    if (nb.s === T.GRASS || nb.s === T.TREE) for (var b = 1; b < S; b += 3) px(g, x + b, y + S - 1, 2, 1, c);
+  }
 
-    function setPixel(rows, x, y, ch) {
-        if (y >= 0 && y < rows.length && x >= 0 && x < rows[y].length) {
-            rows[y] = rows[y].substring(0, x) + ch + rows[y].substring(x + 1);
-        }
+  function water(g, x, y, tx, ty, nb, frame) {
+    px(g, x, y, S, S, P.water);
+    for (var i = 0; i < 3; i++) {
+      var wx = (Math.floor(hash(tx, ty, 80 + i) * 12) + frame * 2) % 13;
+      var wy = 3 + i * 5 + Math.floor(hash(tx, ty, 90 + i) * 2);
+      px(g, x + wx, y + wy, 3, 1, P.waterLight);
     }
+    if (nb.n !== T.WATER) { px(g, x, y, S, 2, P.bank); px(g, x, y + 2, S, 1, P.waterDark); }
+    if (nb.w !== T.WATER) px(g, x, y, 1, S, P.bank);
+    if (nb.e !== T.WATER) px(g, x + S - 1, y, 1, S, P.bank);
+    if (nb.s !== T.WATER) px(g, x, y + S - 1, S, 1, P.bank);
+  }
 
-    function addTie(rows) {
-        // Add tie below collar, centered, 2px wide on rows 17-25
-        setPixel(rows, 13, 17, 'I');
-        setPixel(rows, 14, 17, 'I');
-        setPixel(rows, 13, 18, 'I');
-        setPixel(rows, 14, 18, 'I');
-        setPixel(rows, 13, 19, 'I');
-        setPixel(rows, 14, 19, 'I');
-        setPixel(rows, 13, 20, 'I');
-        setPixel(rows, 14, 20, 'I');
-        setPixel(rows, 13, 21, 'I');
-        setPixel(rows, 14, 21, 'I');
-        setPixel(rows, 13, 22, 'I');
-        setPixel(rows, 14, 22, 'I');
-        setPixel(rows, 14, 23, 'I');
-        setPixel(rows, 13, 23, 'I');
-        setPixel(rows, 14, 24, 'I');
-        setPixel(rows, 13, 24, 'I');
-        return rows;
+  function pitch(g, x, y, tx, ty, nb) {
+    px(g, x, y, S, S, (Math.floor(tx / 2) % 2) ? P.pitch : P.pitchStripe);
+    if (nb.n !== T.PITCH) px(g, x, y + 1, S, 1, P.pitchLine);
+    if (nb.s !== T.PITCH) px(g, x, y + S - 2, S, 1, P.pitchLine);
+    if (nb.w !== T.PITCH) px(g, x + 1, y, 1, S, P.pitchLine);
+    if (nb.e !== T.PITCH) px(g, x + S - 2, y, 1, S, P.pitchLine);
+  }
+
+  function rail(g, x, y, tx, ty, nb) {
+    px(g, x, y, S, S, P.ballast);
+    for (var i = 0; i < 8; i++) px(g, x + Math.floor(hash(tx, ty, 100 + i) * 16), y + Math.floor(hash(tx, ty, 110 + i) * 16), 1, 1, '#a1978a');
+    var vertical = nb.n === T.RAIL || nb.s === T.RAIL;
+    if (vertical) {
+      for (var s = 1; s < S; s += 4) px(g, x + 2, y + s, 12, 2, P.sleeper);
+      px(g, x + 4, y, 1, S, P.rail); px(g, x + 11, y, 1, S, P.rail);
+    } else {
+      for (var t = 1; t < S; t += 4) px(g, x + t, y + 2, 2, 12, P.sleeper);
+      px(g, x, y + 4, S, 1, P.rail); px(g, x, y + 11, S, 1, P.rail);
     }
+  }
 
-    function addGraduationCap(rows) {
-        // Flat rectangle on top of head extending beyond hair, with tassel
-        // Head starts around row 3-7, hair top is row 3
-        // Cap board: row 1-2, from x=6 to x=22
-        for (var x = 6; x <= 22; x++) {
-            setPixel(rows, x, 1, 'K');
-            setPixel(rows, x, 2, 'K');
-        }
-        // Cap top center bump
-        for (var x2 = 10; x2 <= 18; x2++) {
-            setPixel(rows, x2, 0, 'K');
-        }
-        // Tassel hanging on right side
-        setPixel(rows, 21, 3, 'k');
-        setPixel(rows, 22, 3, 'k');
-        setPixel(rows, 22, 4, 'k');
-        setPixel(rows, 23, 4, 'k');
-        setPixel(rows, 23, 5, 'k');
-        setPixel(rows, 23, 6, 'k');
-        return rows;
+  function farm(g, x, y, tx, ty) {
+    px(g, x, y, S, S, P.farm);
+    for (var r = 1; r < S; r += 4) px(g, x, y + r, S, 1, P.farmDark);
+    for (var i = 0; i < 4; i++) px(g, x + Math.floor(hash(tx, ty, 120 + i) * 15), y + 2 + i * 4, 1, 1, '#c2b05a');
+  }
+
+  function plaza(g, x, y, tx, ty) {
+    px(g, x, y, S, S, P.plaza);
+    px(g, x, y + 7, S, 1, P.plazaDark); px(g, x, y + 15, S, 1, P.plazaDark);
+    px(g, x + ((ty % 2) ? 4 : 11), y, 1, 7, P.plazaDark); px(g, x + ((ty % 2) ? 11 : 4), y + 8, 1, 7, P.plazaDark);
+  }
+
+  /* ---------- Buildings ---------- */
+
+  function roofFor(bid, look) {
+    if (look && SPECIAL_ROOF[look]) return SPECIAL_ROOF[look];
+    return ROOFS[Math.floor(hash(bid, 7, 3) * ROOFS.length)];
+  }
+
+  // A building tile is either roof (top face) or the front wall (when the tile below is not this building).
+  function building(g, x, y, tx, ty, nb, bid, look, isDoor, lit) {
+    var roof = roofFor(bid, look);
+    var brick = look === 'brick';
+    var sameS = nb.sB === bid, sameN = nb.nB === bid, sameW = nb.wB === bid, sameE = nb.eB === bid;
+    if (!sameS) {
+      // front wall
+      var wc = brick ? P.brick : P.wall, ws = brick ? P.brickDark : P.wallShade;
+      px(g, x, y, S, S, wc);
+      if (brick) for (var r = 2; r < S; r += 3) { px(g, x, y + r, S, 1, P.brickDark); }
+      px(g, x, y, S, 3, roof[2]);           // eave shadow
+      px(g, x, y + S - 2, S, 2, ws);
+      if (isDoor) {
+        px(g, x + 4, y + 5, 8, 11, P.door);
+        px(g, x + 5, y + 6, 6, 9, '#83532f');
+        px(g, x + 9, y + 10, 1, 1, '#e8c56a');
+        px(g, x + 3, y + 4, 10, 1, ws);
+      } else {
+        var wcol = lit ? P.windowLit : P.window;
+        px(g, x + 3, y + 6, 4, 5, wcol); px(g, x + 9, y + 6, 4, 5, wcol);
+        px(g, x + 3, y + 11, 4, 1, ws); px(g, x + 9, y + 11, 4, 1, ws);
+        if (!lit) { px(g, x + 3, y + 6, 1, 1, '#6d8ba3'); px(g, x + 9, y + 6, 1, 1, '#6d8ba3'); }
+      }
+      if (!sameW) px(g, x, y, 1, S, P.wallDark);
+      if (!sameE) px(g, x + S - 1, y, 1, S, P.wallDark);
+      return;
     }
-
-    function addGlasses(rows) {
-        // Glasses across eye area (rows 9-10), lenses over eyes
-        // Left lens: x=11-13, right lens: x=14-16, bridge: x=13-14
-        setPixel(rows, 10, 9, 'G');
-        setPixel(rows, 11, 9, 'G');
-        setPixel(rows, 12, 9, 'g');
-        setPixel(rows, 13, 9, 'g');
-        setPixel(rows, 14, 9, 'G');
-        setPixel(rows, 15, 9, 'G');
-        setPixel(rows, 16, 9, 'g');
-        setPixel(rows, 17, 9, 'g');
-        setPixel(rows, 18, 9, 'G');
-
-        setPixel(rows, 10, 10, 'G');
-        setPixel(rows, 11, 10, 'G');
-        setPixel(rows, 12, 10, 'g');
-        setPixel(rows, 13, 10, 'g');
-        setPixel(rows, 14, 10, 'G');
-        setPixel(rows, 15, 10, 'G');
-        setPixel(rows, 16, 10, 'g');
-        setPixel(rows, 17, 10, 'g');
-        setPixel(rows, 18, 10, 'G');
-        return rows;
+    // roof
+    px(g, x, y, S, S, roof[0]);
+    if (hash(bid, ty, 9) > 0.5) for (var k = 3; k < S; k += 5) px(g, x, y + k, S, 1, roof[2]);
+    if (!sameN) px(g, x, y, S, 2, roof[1]);
+    if (!sameW) px(g, x, y, 2, S, roof[1]);
+    if (!sameE) px(g, x + S - 2, y, 2, S, roof[2]);
+    // occasional rooftop water tank, very Indian campus
+    if (sameN && sameW && sameE && hash(tx, ty, bid) > 0.985) {
+      px(g, x + 5, y + 3, 6, 7, '#2d2d2d'); px(g, x + 6, y + 4, 4, 1, '#4a4a4a');
     }
+  }
 
-    function addBlazer(rows) {
-        // Blazer overlays the outer edge of torso with X color
-        // Rows 17-25, the outer 2px on each side of the shirt
-        for (var y = 17; y <= 25; y++) {
-            var row = rows[y];
-            // Find first non-dot and last non-dot in the shirt area
-            for (var x = 0; x < row.length; x++) {
-                if (row[x] === 'T' || row[x] === 't' || row[x] === 'A' || row[x] === 'a') {
-                    setPixel(rows, x, y, 'X');
-                    if (x + 1 < row.length && (row[x + 1] === 'T' || row[x + 1] === 't' || row[x + 1] === 'A' || row[x + 1] === 'a')) {
-                        setPixel(rows, x + 1, y, 'X');
-                    }
-                    break;
-                }
-            }
-            // Right side
-            for (var x2 = row.length - 1; x2 >= 0; x2--) {
-                if (row[x2] === 'T' || row[x2] === 't' || row[x2] === 'A' || row[x2] === 'a') {
-                    setPixel(rows, x2, y, 'X');
-                    if (x2 - 1 >= 0 && (row[x2 - 1] === 'T' || row[x2 - 1] === 't' || row[x2 - 1] === 'A' || row[x2 - 1] === 'a')) {
-                        setPixel(rows, x2 - 1, y, 'X');
-                    }
-                    break;
-                }
-            }
-        }
-        return rows;
+  /* ---------- Trees (drawn as tall objects so you can walk behind them) ---------- */
+
+  function tree(g, x, y, tx, ty) {
+    var v = hash(tx, ty, 130);
+    var big = v > 0.55;
+    // shadow on the ground
+    g.fillStyle = P.shadow;
+    g.beginPath(); g.ellipse(x + 8, y + 14, 7, 3, 0, 0, 7); g.fill();
+    px(g, x + 7, y + 8, 3, 7, P.trunk);
+    px(g, x + 7, y + 8, 1, 7, '#7d5a36');
+    var cy = big ? y - 6 : y - 2, r = big ? 9 : 7;
+    blob(g, x + 8, cy + 4, r, P.canopyDark);
+    blob(g, x + 7, cy + 2, r - 1, P.canopy);
+    blob(g, x + 6, cy, r - 3, P.canopyLight);
+    px(g, x + 4, cy - 2, 2, 2, P.canopyHi);
+    px(g, x + 8, cy - 4, 2, 1, P.canopyHi);
+    if (v < 0.12) { // flowering tree: krishnachura / radhachura, common in Bengal
+      for (var i = 0; i < 7; i++) px(g, x + 2 + Math.floor(hash(tx, ty, 140 + i) * 12), cy - 4 + Math.floor(hash(tx, ty, 150 + i) * 10), 2, 2, v < 0.06 ? '#e8572f' : '#f2c230');
     }
+  }
 
-    function applyTierModifications(tier, rows) {
-        var modified = cloneRows(rows);
-        if (tier === 'formal') {
-            addTie(modified);
-        } else if (tier === 'formal-coat') {
-            addTie(modified);
-            addBlazer(modified);
-        } else if (tier === 'graduate') {
-            addGraduationCap(modified);
-        } else if (tier === 'senior') {
-            addGlasses(modified);
-            addBlazer(modified);
-        } else if (tier === 'final') {
-            addGlasses(modified);
-            addBlazer(modified);
-            addTie(modified);
-        }
-        return modified;
+  function blob(g, cx, cy, r, c) {
+    g.fillStyle = c;
+    for (var dy = -r; dy <= r; dy++) {
+      var w = Math.round(Math.sqrt(r * r - dy * dy));
+      g.fillRect(cx - w, cy + dy, w * 2, 1);
     }
+  }
 
-    // =========================================================================
-    // CHARACTER TEXTURE GENERATION
-    // =========================================================================
+  /* ---------- People ---------- */
 
-    GAME.generateCharacterTextures = function (renderer) {
-        var tiers = ['base', 'freshman', 'mid', 'formal', 'formal-coat', 'graduate', 'senior', 'final'];
-        var result = {};
+  // look: {skin, hair, shirt, pants, hairLong, cap, tie}
+  function person(g, x, y, dir, step, look, bike) {
+    var sw = step ? 1 : 0;              // arm/leg swing
+    var bob = step && !bike ? -1 : 0;
+    g.fillStyle = P.shadow;
+    g.beginPath(); g.ellipse(x + 8, y + 22, bike ? 8 : 5, 2, 0, 0, 7); g.fill();
 
-        var baseFrames = {
-            idle: [BASE_IDLE_0, BASE_IDLE_1],
-            walk: [BASE_WALK_0, BASE_WALK_1, BASE_WALK_2, BASE_WALK_3]
-        };
+    if (bike) drawBike(g, x, y, dir, step);
 
-        for (var ti = 0; ti < tiers.length; ti++) {
-            var tier = tiers[ti];
-            var palette = PALETTES[tier];
-            result[tier] = { idle: [], walk: [] };
+    var top = y + 4 + bob + (bike ? -1 : 0);
+    // legs
+    if (!bike) {
+      if (dir === 'left' || dir === 'right') {
+        px(g, x + 6 - sw, top + 13, 2, 5, look.pants);
+        px(g, x + 9 + sw, top + 13, 2, 5, look.pants);
+        px(g, x + 6 - sw, top + 17, 2, 1, '#2b2118'); px(g, x + 9 + sw, top + 17, 2, 1, '#2b2118');
+      } else {
+        px(g, x + 5, top + 13, 2, 5 - sw, look.pants);
+        px(g, x + 9, top + 13, 2, 4 + sw, look.pants);
+        px(g, x + 5, top + 17 - sw, 2, 1, '#2b2118'); px(g, x + 9, top + 16 + sw, 2, 1, '#2b2118');
+      }
+    } else {
+      px(g, x + 5, top + 13, 2, 3, look.pants); px(g, x + 9, top + 13, 2, 3, look.pants);
+    }
+    // body
+    px(g, x + 4, top + 7, 8, 7, look.shirt);
+    px(g, x + 4, top + 13, 8, 1, shade(look.shirt));
+    if (look.tie && dir === 'down') px(g, x + 7, top + 8, 2, 5, look.tie);
+    // arms
+    if (dir === 'left' || dir === 'right') {
+      var ax = dir === 'left' ? x + 6 + sw : x + 8 - sw;
+      px(g, ax, top + 8, 2, 5, shade(look.shirt)); px(g, ax, top + 12, 2, 1, look.skin);
+    } else {
+      px(g, x + 3, top + 8 + (bike ? 0 : sw), 1, 5, shade(look.shirt)); px(g, x + 12, top + 8 + (bike ? 0 : 1 - sw), 1, 5, shade(look.shirt));
+      px(g, x + 3, top + 12 + (bike ? 0 : sw), 1, 1, look.skin); px(g, x + 12, top + 13 - (bike ? 1 : sw), 1, 1, look.skin);
+    }
+    // head
+    px(g, x + 4, top, 8, 7, look.skin);
+    px(g, x + 4, top + 6, 8, 1, shade(look.skin));
+    var hair = look.hair;
+    if (dir === 'up') {
+      px(g, x + 4, top - 1, 8, 6, hair);
+      if (look.hairLong) px(g, x + 4, top + 5, 8, 4, hair);
+    } else {
+      px(g, x + 4, top - 1, 8, 3, hair);
+      px(g, x + 3, top, 1, 3, hair); px(g, x + 12, top, 1, 3, hair);
+      if (dir === 'down') {
+        px(g, x + 6, top + 3, 1, 2, '#1d1d24'); px(g, x + 9, top + 3, 1, 2, '#1d1d24');
+        px(g, x + 7, top + 5, 2, 1, shade(look.skin));
+        if (look.hairLong) { px(g, x + 3, top + 2, 1, 7, hair); px(g, x + 12, top + 2, 1, 7, hair); }
+      } else {
+        var back = dir === 'left' ? x + 9 : x + 4;
+        px(g, back, top + 1, 3, 3, hair);
+        px(g, dir === 'left' ? x + 5 : x + 10, top + 3, 1, 2, '#1d1d24');
+        if (look.hairLong) px(g, back, top + 2, 3, 7, hair);
+      }
+    }
+    if (look.cap) { px(g, x + 3, top - 2, 10, 3, look.cap); if (dir === 'down') px(g, x + 3, top + 1, 10, 1, shade(look.cap)); }
+  }
 
-            // Idle frames
-            for (var i = 0; i < baseFrames.idle.length; i++) {
-                var modifiedRows = applyTierModifications(tier, baseFrames.idle[i]);
-                result[tier].idle.push(renderSpriteData(modifiedRows, palette));
-            }
+  function drawBike(g, x, y, dir, step) {
+    var frame = '#2a6fb0', tyre = '#1d1d22';
+    if (dir === 'left' || dir === 'right') {
+      wheel(g, x + 2, y + 18, tyre, step); wheel(g, x + 14, y + 18, tyre, step);
+      px(g, x + 3, y + 16, 11, 1, frame); px(g, x + 7, y + 13, 1, 4, frame);
+      px(g, dir === 'right' ? x + 12 : x + 3, y + 12, 2, 1, '#333');
+    } else {
+      px(g, x + 7, y + 13, 2, 9, tyre);
+      px(g, x + 7, y + (step ? 14 : 16), 2, 1, '#555');
+      px(g, x + 4, y + 13, 8, 1, '#333');
+    }
+  }
 
-            // Walk frames
-            for (var w = 0; w < baseFrames.walk.length; w++) {
-                var modifiedWalkRows = applyTierModifications(tier, baseFrames.walk[w]);
-                result[tier].walk.push(renderSpriteData(modifiedWalkRows, palette));
-            }
-        }
+  function wheel(g, cx, cy, c, step) {
+    px(g, cx - 2, cy - 3, 4, 1, c); px(g, cx - 2, cy + 2, 4, 1, c);
+    px(g, cx - 3, cy - 2, 1, 4, c); px(g, cx + 2, cy - 2, 1, 4, c);
+    px(g, cx + (step ? -1 : 0), cy - 1, 1, 2, '#777');
+  }
 
-        return result;
-    };
+  function shade(hex) {
+    var n = parseInt(hex.slice(1), 16);
+    var r = Math.max(0, (n >> 16) - 34), gg = Math.max(0, ((n >> 8) & 255) - 34), b = Math.max(0, (n & 255) - 34);
+    return '#' + ((1 << 24) + (r << 16) + (gg << 8) + b).toString(16).slice(1);
+  }
 
-    // =========================================================================
-    // TILE TEXTURE GENERATION (16x16 each)
-    // =========================================================================
+  /* ---------- Small props ---------- */
 
-    GAME.generateTileTextures = function () {
-        var tiles = {};
+  function lamp(g, x, y, on) {
+    px(g, x + 7, y - 10, 2, 22, '#3d4248');
+    px(g, x + 5, y - 12, 6, 3, '#2f3338');
+    px(g, x + 6, y - 9, 4, 1, on ? '#ffe6a0' : '#8c9196');
+  }
 
-        // --- grass ---
-        tiles['grass'] = renderCanvasTexture(16, 16, function (ctx) {
-            ctx.fillStyle = '#4ade80';
-            ctx.fillRect(0, 0, 16, 16);
-            var shades = ['#3bce6f', '#5aee90', '#45d878'];
-            for (var i = 0; i < 30; i++) {
-                ctx.fillStyle = shades[Math.floor(Math.random() * shades.length)];
-                ctx.fillRect(Math.floor(Math.random() * 16), Math.floor(Math.random() * 16), 1, 1);
-            }
-        });
+  function sign(g, x, y) {
+    g.fillStyle = P.shadow; g.beginPath(); g.ellipse(x + 8, y + 15, 6, 2, 0, 0, 7); g.fill();
+    px(g, x + 7, y + 7, 2, 8, '#6b4a2b');
+    px(g, x + 2, y + 1, 12, 8, '#8a5f35');
+    px(g, x + 3, y + 2, 10, 6, '#c49a5c');
+    px(g, x + 4, y + 4, 8, 1, '#8a5f35'); px(g, x + 4, y + 6, 6, 1, '#8a5f35');
+  }
 
-        // --- grass-dark ---
-        tiles['grass-dark'] = renderCanvasTexture(16, 16, function (ctx) {
-            ctx.fillStyle = '#22c55e';
-            ctx.fillRect(0, 0, 16, 16);
-            var shades = ['#1aab50', '#28d466', '#1fb854'];
-            for (var i = 0; i < 30; i++) {
-                ctx.fillStyle = shades[Math.floor(Math.random() * shades.length)];
-                ctx.fillRect(Math.floor(Math.random() * 16), Math.floor(Math.random() * 16), 1, 1);
-            }
-        });
+  function scroll(g, x, y, t) {
+    var b = Math.round(Math.sin(t * 4) * 1.5);
+    g.fillStyle = P.shadow; g.beginPath(); g.ellipse(x + 8, y + 14, 5, 2, 0, 0, 7); g.fill();
+    px(g, x + 4, y + 4 + b, 8, 7, '#f1e6c8');
+    px(g, x + 3, y + 3 + b, 10, 2, '#c9a76a'); px(g, x + 3, y + 10 + b, 10, 2, '#c9a76a');
+    px(g, x + 5, y + 6 + b, 6, 1, '#8a7650'); px(g, x + 5, y + 8 + b, 4, 1, '#8a7650');
+  }
 
-        // --- path-stone ---
-        tiles['path-stone'] = renderCanvasTexture(16, 16, function (ctx) {
-            ctx.fillStyle = '#9ca3af';
-            ctx.fillRect(0, 0, 16, 16);
-            // Grid lines
-            ctx.fillStyle = '#6b7280';
-            ctx.fillRect(0, 7, 16, 1);
-            ctx.fillRect(0, 15, 16, 1);
-            ctx.fillRect(7, 0, 1, 8);
-            ctx.fillRect(3, 8, 1, 8);
-            ctx.fillRect(11, 8, 1, 8);
-            // Noise
-            for (var i = 0; i < 10; i++) {
-                ctx.fillStyle = Math.random() > 0.5 ? '#a3abb8' : '#8b929e';
-                ctx.fillRect(Math.floor(Math.random() * 16), Math.floor(Math.random() * 16), 1, 1);
-            }
-        });
+  function cycle(g, x, y) {
+    wheel(g, x + 3, y + 12, '#1d1d22', 0); wheel(g, x + 13, y + 12, '#1d1d22', 0);
+    px(g, x + 4, y + 10, 9, 1, '#c0392b'); px(g, x + 8, y + 7, 1, 4, '#c0392b');
+    px(g, x + 6, y + 6, 4, 1, '#333'); px(g, x + 12, y + 6, 2, 1, '#333');
+  }
 
-        // --- wood-floor ---
-        tiles['wood-floor'] = renderCanvasTexture(16, 16, function (ctx) {
-            ctx.fillStyle = '#a0845c';
-            ctx.fillRect(0, 0, 16, 16);
-            // Wood grain lines every 4px
-            ctx.fillStyle = '#8b7050';
-            for (var y = 3; y < 16; y += 4) {
-                ctx.fillRect(0, y, 16, 1);
-            }
-            // Knots
-            ctx.fillStyle = '#7a6045';
-            ctx.fillRect(5, 1, 2, 2);
-            ctx.fillRect(12, 9, 2, 2);
-            // Highlights
-            ctx.fillStyle = '#b09468';
-            for (var i = 0; i < 8; i++) {
-                ctx.fillRect(Math.floor(Math.random() * 16), Math.floor(Math.random() * 16), 1, 1);
-            }
-        });
-
-        // --- wood-floor-dark ---
-        tiles['wood-floor-dark'] = renderCanvasTexture(16, 16, function (ctx) {
-            ctx.fillStyle = '#7a6040';
-            ctx.fillRect(0, 0, 16, 16);
-            ctx.fillStyle = '#6b5235';
-            for (var y = 3; y < 16; y += 4) {
-                ctx.fillRect(0, y, 16, 1);
-            }
-            ctx.fillStyle = '#5c4530';
-            ctx.fillRect(3, 5, 2, 2);
-            ctx.fillRect(10, 12, 2, 2);
-            ctx.fillStyle = '#8a7050';
-            for (var i = 0; i < 8; i++) {
-                ctx.fillRect(Math.floor(Math.random() * 16), Math.floor(Math.random() * 16), 1, 1);
-            }
-        });
-
-        // --- carpet-blue ---
-        tiles['carpet-blue'] = renderCanvasTexture(16, 16, function (ctx) {
-            ctx.fillStyle = '#3b82f6';
-            ctx.fillRect(0, 0, 16, 16);
-            // Diamond pattern
-            ctx.fillStyle = '#2563eb';
-            for (var y = 0; y < 16; y += 4) {
-                for (var x = 0; x < 16; x += 4) {
-                    ctx.fillRect(x + 1, y, 2, 1);
-                    ctx.fillRect(x, y + 1, 1, 2);
-                    ctx.fillRect(x + 3, y + 1, 1, 2);
-                    ctx.fillRect(x + 1, y + 3, 2, 1);
-                }
-            }
-            // Subtle texture
-            ctx.fillStyle = '#4a90f8';
-            for (var i = 0; i < 12; i++) {
-                ctx.fillRect(Math.floor(Math.random() * 16), Math.floor(Math.random() * 16), 1, 1);
-            }
-        });
-
-        // --- carpet-red ---
-        tiles['carpet-red'] = renderCanvasTexture(16, 16, function (ctx) {
-            ctx.fillStyle = '#ef4444';
-            ctx.fillRect(0, 0, 16, 16);
-            ctx.fillStyle = '#dc2626';
-            for (var y = 0; y < 16; y += 4) {
-                for (var x = 0; x < 16; x += 4) {
-                    ctx.fillRect(x + 1, y, 2, 1);
-                    ctx.fillRect(x, y + 1, 1, 2);
-                    ctx.fillRect(x + 3, y + 1, 1, 2);
-                    ctx.fillRect(x + 1, y + 3, 2, 1);
-                }
-            }
-            ctx.fillStyle = '#f87171';
-            for (var i = 0; i < 12; i++) {
-                ctx.fillRect(Math.floor(Math.random() * 16), Math.floor(Math.random() * 16), 1, 1);
-            }
-        });
-
-        // --- tile-white ---
-        tiles['tile-white'] = renderCanvasTexture(16, 16, function (ctx) {
-            ctx.fillStyle = '#f1f5f9';
-            ctx.fillRect(0, 0, 16, 16);
-            // Grid
-            ctx.fillStyle = '#cbd5e1';
-            ctx.fillRect(0, 0, 16, 1);
-            ctx.fillRect(0, 0, 1, 16);
-            ctx.fillRect(15, 0, 1, 16);
-            ctx.fillRect(0, 15, 16, 1);
-            // Slight sheen
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(3, 3, 2, 1);
-            ctx.fillRect(10, 8, 2, 1);
-        });
-
-        // --- tile-dark ---
-        tiles['tile-dark'] = renderCanvasTexture(16, 16, function (ctx) {
-            ctx.fillStyle = '#334155';
-            ctx.fillRect(0, 0, 16, 16);
-            ctx.fillStyle = '#1e293b';
-            ctx.fillRect(0, 0, 16, 1);
-            ctx.fillRect(0, 0, 1, 16);
-            ctx.fillRect(15, 0, 1, 16);
-            ctx.fillRect(0, 15, 16, 1);
-            ctx.fillStyle = '#475569';
-            ctx.fillRect(5, 5, 1, 1);
-            ctx.fillRect(11, 11, 1, 1);
-        });
-
-        // --- concrete ---
-        tiles['concrete'] = renderCanvasTexture(16, 16, function (ctx) {
-            ctx.fillStyle = '#94a3b8';
-            ctx.fillRect(0, 0, 16, 16);
-            var shades = ['#8b97a8', '#9dabb8', '#a3b1be', '#8894a5'];
-            for (var i = 0; i < 40; i++) {
-                ctx.fillStyle = shades[Math.floor(Math.random() * shades.length)];
-                ctx.fillRect(Math.floor(Math.random() * 16), Math.floor(Math.random() * 16), 1, 1);
-            }
-            // Crack
-            ctx.fillStyle = '#7a8898';
-            ctx.fillRect(3, 2, 1, 1);
-            ctx.fillRect(4, 3, 1, 1);
-            ctx.fillRect(5, 3, 1, 1);
-            ctx.fillRect(6, 4, 1, 1);
-        });
-
-        return tiles;
-    };
-
-    // =========================================================================
-    // PROP TEXTURE GENERATION
-    // =========================================================================
-
-    GAME.generatePropTextures = function () {
-        var props = {};
-
-        // --- desk-wood (32x24) ---
-        props['desk-wood'] = renderCanvasTexture(32, 24, function (ctx) {
-            // Shadow
-            ctx.fillStyle = 'rgba(0,0,0,0.2)';
-            ctx.fillRect(2, 21, 30, 3);
-            // Desktop surface (top)
-            ctx.fillStyle = '#a0845c';
-            ctx.fillRect(0, 2, 32, 14);
-            // Desktop surface highlight
-            ctx.fillStyle = '#b09468';
-            ctx.fillRect(1, 3, 30, 2);
-            // Front edge
-            ctx.fillStyle = '#8b7050';
-            ctx.fillRect(0, 16, 32, 4);
-            // Legs
-            ctx.fillStyle = '#7a6045';
-            ctx.fillRect(2, 16, 3, 8);
-            ctx.fillRect(27, 16, 3, 8);
-            // Drawer handle
-            ctx.fillStyle = '#c4a878';
-            ctx.fillRect(14, 17, 4, 1);
-            // Wood grain
-            ctx.fillStyle = '#96784e';
-            ctx.fillRect(3, 6, 26, 1);
-            ctx.fillRect(3, 10, 26, 1);
-        });
-
-        // --- desk-modern (32x24) ---
-        props['desk-modern'] = renderCanvasTexture(32, 24, function (ctx) {
-            ctx.fillStyle = 'rgba(0,0,0,0.2)';
-            ctx.fillRect(2, 21, 30, 3);
-            // Sleek dark surface
-            ctx.fillStyle = '#334155';
-            ctx.fillRect(0, 2, 32, 14);
-            ctx.fillStyle = '#475569';
-            ctx.fillRect(1, 3, 30, 1);
-            // Front
-            ctx.fillStyle = '#1e293b';
-            ctx.fillRect(0, 16, 32, 4);
-            // Metal legs
-            ctx.fillStyle = '#94a3b8';
-            ctx.fillRect(2, 16, 2, 8);
-            ctx.fillRect(28, 16, 2, 8);
-            // LED strip on front
-            ctx.fillStyle = '#3b82f6';
-            ctx.fillRect(8, 16, 16, 1);
-        });
-
-        // --- chair (12x16) ---
-        props['chair'] = renderCanvasTexture(12, 16, function (ctx) {
-            // Shadow
-            ctx.fillStyle = 'rgba(0,0,0,0.15)';
-            ctx.fillRect(1, 14, 10, 2);
-            // Seat (from above)
-            ctx.fillStyle = '#374151';
-            ctx.fillRect(1, 5, 10, 8);
-            // Backrest
-            ctx.fillStyle = '#4b5563';
-            ctx.fillRect(2, 0, 8, 6);
-            ctx.fillStyle = '#6b7280';
-            ctx.fillRect(3, 1, 6, 1);
-            // Seat cushion
-            ctx.fillStyle = '#4b5563';
-            ctx.fillRect(2, 6, 8, 6);
-            // Armrests
-            ctx.fillStyle = '#374151';
-            ctx.fillRect(0, 4, 2, 8);
-            ctx.fillRect(10, 4, 2, 8);
-            // Base/wheels
-            ctx.fillStyle = '#1f2937';
-            ctx.fillRect(4, 13, 4, 2);
-            ctx.fillRect(2, 14, 1, 1);
-            ctx.fillRect(9, 14, 1, 1);
-        });
-
-        // --- laptop (14x10) ---
-        props['laptop'] = renderCanvasTexture(14, 10, function (ctx) {
-            // Shadow
-            ctx.fillStyle = 'rgba(0,0,0,0.15)';
-            ctx.fillRect(1, 8, 13, 2);
-            // Screen (open, tilted)
-            ctx.fillStyle = '#1e293b';
-            ctx.fillRect(1, 0, 12, 5);
-            ctx.fillStyle = '#1e40af';
-            ctx.fillRect(2, 1, 10, 3);
-            // Screen glow
-            ctx.fillStyle = '#3b82f6';
-            ctx.fillRect(3, 1, 4, 1);
-            ctx.fillRect(8, 2, 3, 1);
-            // Keyboard base
-            ctx.fillStyle = '#475569';
-            ctx.fillRect(0, 5, 14, 4);
-            ctx.fillStyle = '#334155';
-            ctx.fillRect(1, 5, 12, 1);
-            // Keyboard dots
-            ctx.fillStyle = '#64748b';
-            for (var y = 6; y < 9; y++) {
-                for (var x = 2; x < 12; x += 2) {
-                    ctx.fillRect(x, y, 1, 1);
-                }
-            }
-            // Trackpad
-            ctx.fillStyle = '#5a6577';
-            ctx.fillRect(5, 8, 4, 1);
-        });
-
-        // --- monitor (16x20) ---
-        props['monitor'] = renderCanvasTexture(16, 20, function (ctx) {
-            // Shadow
-            ctx.fillStyle = 'rgba(0,0,0,0.15)';
-            ctx.fillRect(2, 18, 14, 2);
-            // Bezel
-            ctx.fillStyle = '#1e293b';
-            ctx.fillRect(0, 0, 16, 14);
-            // Screen
-            ctx.fillStyle = '#1e3a5f';
-            ctx.fillRect(1, 1, 14, 11);
-            // Screen content
-            ctx.fillStyle = '#3b82f6';
-            ctx.fillRect(2, 2, 6, 1);
-            ctx.fillStyle = '#60a5fa';
-            ctx.fillRect(2, 4, 10, 1);
-            ctx.fillRect(2, 6, 8, 1);
-            ctx.fillRect(2, 8, 11, 1);
-            // Power LED
-            ctx.fillStyle = '#22c55e';
-            ctx.fillRect(8, 13, 1, 1);
-            // Stand
-            ctx.fillStyle = '#334155';
-            ctx.fillRect(6, 14, 4, 3);
-            // Base
-            ctx.fillStyle = '#475569';
-            ctx.fillRect(3, 17, 10, 2);
-        });
-
-        // --- dual-monitors (30x20) ---
-        props['dual-monitors'] = renderCanvasTexture(30, 20, function (ctx) {
-            ctx.fillStyle = 'rgba(0,0,0,0.15)';
-            ctx.fillRect(2, 18, 28, 2);
-            // Left monitor bezel
-            ctx.fillStyle = '#1e293b';
-            ctx.fillRect(0, 0, 14, 14);
-            ctx.fillStyle = '#1e3a5f';
-            ctx.fillRect(1, 1, 12, 11);
-            // Left screen content
-            ctx.fillStyle = '#3b82f6';
-            ctx.fillRect(2, 2, 5, 1);
-            ctx.fillRect(2, 4, 9, 1);
-            ctx.fillRect(2, 6, 7, 1);
-            // Right monitor bezel
-            ctx.fillStyle = '#1e293b';
-            ctx.fillRect(16, 0, 14, 14);
-            ctx.fillStyle = '#1e3a5f';
-            ctx.fillRect(17, 1, 12, 11);
-            // Right screen content (code)
-            ctx.fillStyle = '#4ade80';
-            ctx.fillRect(18, 2, 6, 1);
-            ctx.fillStyle = '#f97316';
-            ctx.fillRect(18, 4, 8, 1);
-            ctx.fillStyle = '#a78bfa';
-            ctx.fillRect(18, 6, 5, 1);
-            ctx.fillRect(18, 8, 9, 1);
-            // Stands
-            ctx.fillStyle = '#334155';
-            ctx.fillRect(5, 14, 4, 3);
-            ctx.fillRect(21, 14, 4, 3);
-            // Bases
-            ctx.fillStyle = '#475569';
-            ctx.fillRect(2, 17, 10, 2);
-            ctx.fillRect(18, 17, 10, 2);
-        });
-
-        // --- coffee-cup (6x6) ---
-        props['coffee-cup'] = renderCanvasTexture(6, 6, function (ctx) {
-            ctx.fillStyle = 'rgba(0,0,0,0.1)';
-            ctx.fillRect(1, 5, 5, 1);
-            // Cup body (from above, circular)
-            ctx.fillStyle = '#f5f5f4';
-            ctx.fillRect(1, 1, 4, 4);
-            ctx.fillRect(0, 2, 1, 2);
-            ctx.fillRect(5, 2, 1, 2);
-            // Coffee inside
-            ctx.fillStyle = '#78350f';
-            ctx.fillRect(2, 2, 2, 2);
-            // Handle
-            ctx.fillStyle = '#e7e5e4';
-            ctx.fillRect(5, 2, 1, 1);
-            // Rim highlight
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(1, 1, 4, 1);
-        });
-
-        // --- pizza-box (14x14) ---
-        props['pizza-box'] = renderCanvasTexture(14, 14, function (ctx) {
-            ctx.fillStyle = 'rgba(0,0,0,0.15)';
-            ctx.fillRect(1, 12, 13, 2);
-            // Box
-            ctx.fillStyle = '#d4a574';
-            ctx.fillRect(0, 0, 14, 12);
-            ctx.fillStyle = '#c4956a';
-            ctx.fillRect(0, 0, 14, 1);
-            ctx.fillRect(0, 0, 1, 12);
-            ctx.fillRect(13, 0, 1, 12);
-            // Pizza inside (open box)
-            ctx.fillStyle = '#fbbf24';
-            ctx.fillRect(2, 2, 10, 8);
-            // Pepperoni
-            ctx.fillStyle = '#dc2626';
-            ctx.fillRect(4, 3, 2, 2);
-            ctx.fillRect(8, 4, 2, 2);
-            ctx.fillRect(5, 6, 2, 2);
-            ctx.fillRect(9, 7, 2, 1);
-            // Cheese highlight
-            ctx.fillStyle = '#fcd34d';
-            ctx.fillRect(3, 4, 1, 1);
-            ctx.fillRect(7, 3, 1, 1);
-            ctx.fillRect(10, 6, 1, 1);
-        });
-
-        // --- energy-drink (4x8) ---
-        props['energy-drink'] = renderCanvasTexture(4, 8, function (ctx) {
-            ctx.fillStyle = 'rgba(0,0,0,0.1)';
-            ctx.fillRect(0, 7, 4, 1);
-            // Can body
-            ctx.fillStyle = '#1e293b';
-            ctx.fillRect(0, 1, 4, 6);
-            // Top
-            ctx.fillStyle = '#94a3b8';
-            ctx.fillRect(0, 0, 4, 1);
-            ctx.fillRect(1, 0, 2, 1);
-            // Logo stripe
-            ctx.fillStyle = '#22c55e';
-            ctx.fillRect(0, 3, 4, 1);
-            ctx.fillStyle = '#4ade80';
-            ctx.fillRect(1, 2, 2, 1);
-            // Highlight
-            ctx.fillStyle = '#334155';
-            ctx.fillRect(0, 1, 1, 6);
-        });
-
-        // --- bed (24x32) ---
-        props['bed'] = renderCanvasTexture(24, 32, function (ctx) {
-            ctx.fillStyle = 'rgba(0,0,0,0.15)';
-            ctx.fillRect(2, 30, 22, 2);
-            // Bed frame
-            ctx.fillStyle = '#7a6045';
-            ctx.fillRect(0, 0, 24, 32);
-            // Mattress
-            ctx.fillStyle = '#f5f5f4';
-            ctx.fillRect(1, 1, 22, 28);
-            // Pillow
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(3, 2, 8, 6);
-            ctx.fillRect(13, 2, 8, 6);
-            ctx.fillStyle = '#e5e7eb';
-            ctx.fillRect(4, 3, 6, 4);
-            ctx.fillRect(14, 3, 6, 4);
-            // Blanket
-            ctx.fillStyle = '#3b82f6';
-            ctx.fillRect(1, 10, 22, 18);
-            ctx.fillStyle = '#2563eb';
-            ctx.fillRect(1, 10, 22, 1);
-            // Blanket fold
-            ctx.fillStyle = '#60a5fa';
-            ctx.fillRect(3, 12, 18, 2);
-            // Wrinkles
-            ctx.fillStyle = '#2563eb';
-            ctx.fillRect(5, 16, 8, 1);
-            ctx.fillRect(10, 20, 10, 1);
-            ctx.fillRect(3, 24, 6, 1);
-        });
-
-        // --- bookshelf (24x32) ---
-        props['bookshelf'] = renderCanvasTexture(24, 32, function (ctx) {
-            ctx.fillStyle = 'rgba(0,0,0,0.15)';
-            ctx.fillRect(2, 30, 22, 2);
-            // Frame
-            ctx.fillStyle = '#7a6045';
-            ctx.fillRect(0, 0, 24, 32);
-            // Shelves (horizontal boards)
-            var shelfYs = [0, 8, 16, 24, 31];
-            for (var i = 0; i < shelfYs.length; i++) {
-                ctx.fillStyle = '#8b7050';
-                ctx.fillRect(0, shelfYs[i], 24, 1);
-            }
-            // Back panel
-            ctx.fillStyle = '#5c4530';
-            ctx.fillRect(1, 1, 22, 7);
-            ctx.fillRect(1, 9, 22, 7);
-            ctx.fillRect(1, 17, 22, 7);
-            ctx.fillRect(1, 25, 22, 6);
-            // Books on shelf 1
-            var bookColors = ['#ef4444', '#3b82f6', '#22c55e', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
-            var bx = 2;
-            for (var b = 0; b < 7; b++) {
-                ctx.fillStyle = bookColors[b % bookColors.length];
-                var bw = 2 + Math.floor(Math.random() * 2);
-                ctx.fillRect(bx, 2, bw, 6);
-                bx += bw + 1;
-                if (bx > 20) break;
-            }
-            // Books on shelf 2
-            bx = 2;
-            for (var b2 = 0; b2 < 6; b2++) {
-                ctx.fillStyle = bookColors[(b2 + 3) % bookColors.length];
-                var bw2 = 2 + Math.floor(Math.random() * 2);
-                ctx.fillRect(bx, 10, bw2, 6);
-                bx += bw2 + 1;
-                if (bx > 20) break;
-            }
-            // Books on shelf 3
-            bx = 2;
-            for (var b3 = 0; b3 < 5; b3++) {
-                ctx.fillStyle = bookColors[(b3 + 5) % bookColors.length];
-                var bw3 = 2 + Math.floor(Math.random() * 2);
-                ctx.fillRect(bx, 18, bw3, 6);
-                bx += bw3 + 1;
-                if (bx > 20) break;
-            }
-            // Shelf 4 — some books, a small object
-            bx = 2;
-            for (var b4 = 0; b4 < 4; b4++) {
-                ctx.fillStyle = bookColors[(b4 + 1) % bookColors.length];
-                var bw4 = 2 + Math.floor(Math.random() * 2);
-                ctx.fillRect(bx, 26, bw4, 5);
-                bx += bw4 + 1;
-                if (bx > 16) break;
-            }
-            // Small globe on shelf 4
-            ctx.fillStyle = '#60a5fa';
-            ctx.fillRect(18, 27, 3, 3);
-            ctx.fillStyle = '#22c55e';
-            ctx.fillRect(19, 27, 1, 2);
-        });
-
-        // --- whiteboard (28x24) ---
-        props['whiteboard'] = renderCanvasTexture(28, 24, function (ctx) {
-            ctx.fillStyle = 'rgba(0,0,0,0.1)';
-            ctx.fillRect(2, 22, 26, 2);
-            // Frame
-            ctx.fillStyle = '#94a3b8';
-            ctx.fillRect(0, 0, 28, 24);
-            // White surface
-            ctx.fillStyle = '#f8fafc';
-            ctx.fillRect(2, 2, 24, 18);
-            // Marker scribbles
-            ctx.fillStyle = '#ef4444';
-            ctx.fillRect(4, 4, 8, 1);
-            ctx.fillRect(4, 5, 1, 4);
-            ctx.fillRect(5, 7, 4, 1);
-            ctx.fillStyle = '#3b82f6';
-            ctx.fillRect(14, 4, 6, 1);
-            ctx.fillRect(14, 6, 8, 1);
-            ctx.fillRect(14, 8, 5, 1);
-            ctx.fillStyle = '#22c55e';
-            ctx.fillRect(4, 12, 10, 1);
-            ctx.fillRect(4, 14, 7, 1);
-            // Tray at bottom
-            ctx.fillStyle = '#64748b';
-            ctx.fillRect(4, 20, 20, 2);
-            // Markers in tray
-            ctx.fillStyle = '#ef4444';
-            ctx.fillRect(6, 20, 3, 1);
-            ctx.fillStyle = '#3b82f6';
-            ctx.fillRect(10, 20, 3, 1);
-            ctx.fillStyle = '#22c55e';
-            ctx.fillRect(14, 20, 3, 1);
-            ctx.fillStyle = '#1e293b';
-            ctx.fillRect(18, 20, 3, 1);
-        });
-
-        // --- bean-bag (16x14) ---
-        props['bean-bag'] = renderCanvasTexture(16, 14, function (ctx) {
-            ctx.fillStyle = 'rgba(0,0,0,0.12)';
-            ctx.fillRect(2, 12, 14, 2);
-            // Main body (rounded blob)
-            ctx.fillStyle = '#ef4444';
-            ctx.fillRect(3, 2, 10, 10);
-            ctx.fillRect(2, 3, 12, 8);
-            ctx.fillRect(1, 4, 14, 6);
-            // Highlight
-            ctx.fillStyle = '#f87171';
-            ctx.fillRect(4, 3, 6, 3);
-            ctx.fillRect(3, 4, 8, 2);
-            // Seam line
-            ctx.fillStyle = '#dc2626';
-            ctx.fillRect(8, 3, 1, 9);
-            // Shadow area
-            ctx.fillStyle = '#b91c1c';
-            ctx.fillRect(3, 9, 10, 2);
-        });
-
-        // --- tree (20x32) ---
-        props['tree'] = renderCanvasTexture(20, 32, function (ctx) {
-            ctx.fillStyle = 'rgba(0,0,0,0.12)';
-            ctx.fillRect(3, 29, 14, 3);
-            // Trunk
-            ctx.fillStyle = '#7a6045';
-            ctx.fillRect(8, 18, 4, 12);
-            ctx.fillStyle = '#6b5235';
-            ctx.fillRect(8, 18, 1, 12);
-            // Canopy layers (3/4 view, round)
-            ctx.fillStyle = '#16a34a';
-            ctx.fillRect(3, 4, 14, 16);
-            ctx.fillRect(2, 6, 16, 12);
-            ctx.fillRect(1, 8, 18, 8);
-            // Lighter top
-            ctx.fillStyle = '#22c55e';
-            ctx.fillRect(4, 2, 12, 6);
-            ctx.fillRect(3, 3, 14, 4);
-            // Highlights
-            ctx.fillStyle = '#4ade80';
-            ctx.fillRect(5, 3, 4, 2);
-            ctx.fillRect(8, 5, 5, 2);
-            ctx.fillRect(4, 8, 3, 2);
-            // Depth/shadow on bottom of canopy
-            ctx.fillStyle = '#15803d';
-            ctx.fillRect(3, 14, 14, 4);
-            ctx.fillRect(4, 16, 12, 3);
-        });
-
-        // --- gate-pillar (12x40) ---
-        props['gate-pillar'] = renderCanvasTexture(12, 40, function (ctx) {
-            ctx.fillStyle = 'rgba(0,0,0,0.15)';
-            ctx.fillRect(1, 38, 11, 2);
-            // Main pillar
-            ctx.fillStyle = '#92400e';
-            ctx.fillRect(1, 4, 10, 34);
-            // Brick pattern
-            ctx.fillStyle = '#78350f';
-            for (var y = 4; y < 38; y += 4) {
-                ctx.fillRect(1, y, 10, 1);
-            }
-            for (var y2 = 4; y2 < 38; y2 += 8) {
-                ctx.fillRect(5, y2, 1, 4);
-            }
-            for (var y3 = 8; y3 < 38; y3 += 8) {
-                ctx.fillRect(3, y3, 1, 4);
-                ctx.fillRect(8, y3, 1, 4);
-            }
-            // Cap
-            ctx.fillStyle = '#a3a3a3';
-            ctx.fillRect(0, 0, 12, 4);
-            ctx.fillStyle = '#d4d4d4';
-            ctx.fillRect(1, 0, 10, 2);
-            // Highlight
-            ctx.fillStyle = '#b45309';
-            ctx.fillRect(2, 5, 2, 3);
-            ctx.fillRect(2, 13, 2, 3);
-        });
-
-        // --- gate-arch (40x12) ---
-        props['gate-arch'] = renderCanvasTexture(40, 12, function (ctx) {
-            // Arch
-            ctx.fillStyle = '#92400e';
-            ctx.fillRect(0, 4, 40, 8);
-            // Top curve
-            ctx.fillStyle = '#92400e';
-            ctx.fillRect(4, 2, 32, 2);
-            ctx.fillRect(8, 0, 24, 2);
-            // Brick lines
-            ctx.fillStyle = '#78350f';
-            ctx.fillRect(0, 7, 40, 1);
-            ctx.fillRect(0, 10, 40, 1);
-            // Text area
-            ctx.fillStyle = '#a3a3a3';
-            ctx.fillRect(10, 4, 20, 4);
-            // Text "IIT" (simplified pixel text)
-            ctx.fillStyle = '#1e293b';
-            // I
-            ctx.fillRect(13, 5, 1, 2);
-            // I
-            ctx.fillRect(15, 5, 1, 2);
-            // T
-            ctx.fillRect(17, 5, 3, 1);
-            ctx.fillRect(18, 5, 1, 2);
-            // Bottom highlight
-            ctx.fillStyle = '#b45309';
-            ctx.fillRect(0, 11, 40, 1);
-        });
-
-        // --- trophy (10x16) ---
-        props['trophy'] = renderCanvasTexture(10, 16, function (ctx) {
-            ctx.fillStyle = 'rgba(0,0,0,0.12)';
-            ctx.fillRect(1, 14, 8, 2);
-            // Cup
-            ctx.fillStyle = '#fbbf24';
-            ctx.fillRect(2, 2, 6, 6);
-            ctx.fillRect(1, 3, 8, 4);
-            // Handles
-            ctx.fillStyle = '#f59e0b';
-            ctx.fillRect(0, 3, 1, 3);
-            ctx.fillRect(9, 3, 1, 3);
-            // Interior
-            ctx.fillStyle = '#d97706';
-            ctx.fillRect(3, 3, 4, 4);
-            // Stem
-            ctx.fillStyle = '#f59e0b';
-            ctx.fillRect(4, 8, 2, 3);
-            // Base
-            ctx.fillStyle = '#fbbf24';
-            ctx.fillRect(2, 11, 6, 2);
-            ctx.fillRect(1, 13, 8, 1);
-            // Glint
-            ctx.fillStyle = '#fef3c7';
-            ctx.fillRect(3, 2, 1, 1);
-            ctx.fillRect(2, 3, 1, 1);
-        });
-
-        // --- diploma (12x10) ---
-        props['diploma'] = renderCanvasTexture(12, 10, function (ctx) {
-            ctx.fillStyle = 'rgba(0,0,0,0.1)';
-            ctx.fillRect(1, 8, 11, 2);
-            // Rolled paper
-            ctx.fillStyle = '#fef3c7';
-            ctx.fillRect(1, 1, 10, 7);
-            // Roll edges
-            ctx.fillStyle = '#fde68a';
-            ctx.fillRect(0, 2, 1, 5);
-            ctx.fillRect(11, 2, 1, 5);
-            ctx.fillRect(1, 1, 10, 1);
-            ctx.fillRect(1, 7, 10, 1);
-            // Center crease
-            ctx.fillStyle = '#f5f0d0';
-            ctx.fillRect(1, 4, 10, 1);
-            // Ribbon
-            ctx.fillStyle = '#ef4444';
-            ctx.fillRect(5, 3, 2, 3);
-            ctx.fillStyle = '#dc2626';
-            ctx.fillRect(4, 5, 1, 2);
-            ctx.fillRect(7, 5, 1, 2);
-            // Bow
-            ctx.fillStyle = '#ef4444';
-            ctx.fillRect(4, 3, 4, 1);
-        });
-
-        // --- nameplate (20x8) ---
-        props['nameplate'] = renderCanvasTexture(20, 8, function (ctx) {
-            ctx.fillStyle = 'rgba(0,0,0,0.1)';
-            ctx.fillRect(1, 6, 19, 2);
-            // Plate
-            ctx.fillStyle = '#1e293b';
-            ctx.fillRect(0, 0, 20, 6);
-            // Gold border
-            ctx.fillStyle = '#fbbf24';
-            ctx.fillRect(0, 0, 20, 1);
-            ctx.fillRect(0, 5, 20, 1);
-            ctx.fillRect(0, 0, 1, 6);
-            ctx.fillRect(19, 0, 1, 6);
-            // Text "RANABIR" simplified
-            ctx.fillStyle = '#f5f5f4';
-            // R
-            ctx.fillRect(3, 2, 1, 3);
-            ctx.fillRect(4, 2, 1, 1);
-            ctx.fillRect(4, 3, 1, 1);
-            // B
-            ctx.fillRect(6, 2, 1, 3);
-            ctx.fillRect(7, 2, 1, 1);
-            ctx.fillRect(7, 3, 1, 1);
-            ctx.fillRect(7, 4, 1, 1);
-            // Dots for rest of name
-            ctx.fillRect(9, 3, 1, 1);
-            ctx.fillRect(11, 3, 1, 1);
-            ctx.fillRect(13, 3, 1, 1);
-            ctx.fillRect(15, 3, 1, 1);
-        });
-
-        // --- ppo-badge (12x12) ---
-        props['ppo-badge'] = renderCanvasTexture(12, 12, function (ctx) {
-            ctx.fillStyle = 'rgba(0,0,0,0.1)';
-            ctx.fillRect(1, 10, 10, 2);
-            // Badge body (circular-ish)
-            ctx.fillStyle = '#fbbf24';
-            ctx.fillRect(2, 1, 8, 9);
-            ctx.fillRect(1, 2, 10, 7);
-            // Inner circle
-            ctx.fillStyle = '#f59e0b';
-            ctx.fillRect(3, 2, 6, 7);
-            ctx.fillRect(2, 3, 8, 5);
-            // "PPO" text
-            ctx.fillStyle = '#7c2d12';
-            // P
-            ctx.fillRect(3, 4, 1, 3);
-            ctx.fillRect(4, 4, 1, 1);
-            ctx.fillRect(4, 5, 1, 1);
-            // P
-            ctx.fillRect(6, 4, 1, 3);
-            ctx.fillRect(7, 4, 1, 1);
-            ctx.fillRect(7, 5, 1, 1);
-            // O
-            ctx.fillRect(9, 4, 1, 3);
-            ctx.fillRect(10, 5, 1, 1);
-            // Glint
-            ctx.fillStyle = '#fef3c7';
-            ctx.fillRect(3, 2, 2, 1);
-            // Ribbon at bottom
-            ctx.fillStyle = '#3b82f6';
-            ctx.fillRect(3, 10, 3, 2);
-            ctx.fillRect(6, 10, 3, 2);
-        });
-
-        // --- bloomberg-terminal (20x24) ---
-        props['bloomberg-terminal'] = renderCanvasTexture(20, 24, function (ctx) {
-            ctx.fillStyle = 'rgba(0,0,0,0.15)';
-            ctx.fillRect(2, 22, 18, 2);
-            // Monitor body
-            ctx.fillStyle = '#0f172a';
-            ctx.fillRect(0, 0, 20, 16);
-            // Screen
-            ctx.fillStyle = '#020617';
-            ctx.fillRect(1, 1, 18, 13);
-            // Green chart line going up
-            ctx.fillStyle = '#22c55e';
-            ctx.fillRect(2, 10, 1, 1);
-            ctx.fillRect(3, 9, 1, 1);
-            ctx.fillRect(4, 9, 1, 1);
-            ctx.fillRect(5, 8, 1, 1);
-            ctx.fillRect(6, 7, 1, 1);
-            ctx.fillRect(7, 8, 1, 1);
-            ctx.fillRect(8, 6, 1, 1);
-            ctx.fillRect(9, 5, 1, 1);
-            ctx.fillRect(10, 4, 1, 1);
-            ctx.fillRect(11, 5, 1, 1);
-            ctx.fillRect(12, 3, 1, 1);
-            ctx.fillRect(13, 2, 1, 1);
-            ctx.fillRect(14, 3, 1, 1);
-            ctx.fillRect(15, 2, 1, 1);
-            ctx.fillRect(16, 3, 1, 1);
-            ctx.fillRect(17, 2, 1, 1);
-            // Red line
-            ctx.fillStyle = '#ef4444';
-            ctx.fillRect(2, 11, 1, 1);
-            ctx.fillRect(3, 11, 1, 1);
-            ctx.fillRect(4, 10, 1, 1);
-            ctx.fillRect(5, 11, 1, 1);
-            ctx.fillRect(6, 10, 1, 1);
-            ctx.fillRect(7, 10, 1, 1);
-            ctx.fillRect(8, 9, 1, 1);
-            ctx.fillRect(9, 9, 1, 1);
-            ctx.fillRect(10, 8, 1, 1);
-            ctx.fillRect(11, 9, 1, 1);
-            ctx.fillRect(12, 8, 1, 1);
-            ctx.fillRect(13, 7, 1, 1);
-            ctx.fillRect(14, 8, 1, 1);
-            ctx.fillRect(15, 7, 1, 1);
-            ctx.fillRect(16, 7, 1, 1);
-            ctx.fillRect(17, 6, 1, 1);
-            // Bloomberg text
-            ctx.fillStyle = '#f97316';
-            ctx.fillRect(2, 2, 6, 1);
-            // Ticker data
-            ctx.fillStyle = '#fbbf24';
-            ctx.fillRect(2, 12, 4, 1);
-            ctx.fillStyle = '#22c55e';
-            ctx.fillRect(7, 12, 3, 1);
-            ctx.fillStyle = '#ef4444';
-            ctx.fillRect(11, 12, 3, 1);
-            ctx.fillStyle = '#fbbf24';
-            ctx.fillRect(15, 12, 3, 1);
-            // Stand
-            ctx.fillStyle = '#1e293b';
-            ctx.fillRect(7, 16, 6, 2);
-            // Keyboard
-            ctx.fillStyle = '#1e293b';
-            ctx.fillRect(1, 19, 18, 4);
-            ctx.fillStyle = '#334155';
-            // Keys
-            for (var ky = 20; ky < 23; ky++) {
-                for (var kx = 2; kx < 18; kx += 2) {
-                    ctx.fillRect(kx, ky, 1, 1);
-                }
-            }
-            // Bloomberg special keys (colored)
-            ctx.fillStyle = '#22c55e';
-            ctx.fillRect(2, 20, 2, 1);
-            ctx.fillStyle = '#ef4444';
-            ctx.fillRect(15, 20, 2, 1);
-            ctx.fillStyle = '#fbbf24';
-            ctx.fillRect(2, 22, 2, 1);
-        });
-
-        return props;
-    };
-
+  window.ART = {
+    T: T, CHARS: CHARS, S: S, P: P, hash: hash,
+    grass: grass, road: road, path: path, water: water, pitch: pitch, rail: rail, farm: farm, plaza: plaza,
+    building: building, tree: tree, person: person, lamp: lamp, sign: sign, scroll: scroll, cycle: cycle,
+    edgeShade: edgeShade, px: px
+  };
 })();
