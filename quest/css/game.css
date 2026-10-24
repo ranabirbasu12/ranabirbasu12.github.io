@@ -149,6 +149,29 @@ html, body {
 #dlg-choices button.sel, #dlg-choices button:hover { background: var(--paper-2); }
 #dlg-choices button.sel::before { content: "\25B6"; position: absolute; left: 8px; font-size: 16px; top: 8px; }
 
+/* ---------- Place name tag ---------- */
+
+#place {
+  position: fixed;
+  left: 50%;
+  bottom: max(18px, env(safe-area-inset-bottom));
+  transform: translate(-50%, 10px);
+  font: 10px/1.4 var(--title);
+  color: var(--paper);
+  background: rgba(29, 29, 36, 0.86);
+  border: 2px solid var(--paper-2);
+  padding: 8px 12px 7px;
+  border-radius: 4px;
+  opacity: 0;
+  transition: opacity 0.25s, transform 0.25s;
+  pointer-events: none;
+  z-index: 14;
+  max-width: calc(100vw - 140px);
+  text-align: center;
+}
+#place.show { opacity: 1; transform: translate(-50%, 0); }
+#dialog.open ~ #place, .overlay.open ~ #place { opacity: 0; }
+
 /* ---------- Toast and banner ---------- */
 
 #toast {

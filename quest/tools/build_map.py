@@ -95,10 +95,13 @@ def main(src, out):
             node_tags.append((tags, p))
 
     ways = {}
+    way_nodes = {}
     for w in root.iter("way"):
         tags = {t.get("k"): t.get("v") for t in w.iter("tag")}
-        pts = [nodes[nd.get("ref")] for nd in w.iter("nd") if nd.get("ref") in nodes]
+        refs = [nd.get("ref") for nd in w.iter("nd")]
+        pts = [nodes[r] for r in refs if r in nodes]
         ways[w.get("id")] = (tags, pts)
+        way_nodes[w.get("id")] = refs
 
     # Multipolygon outers (TSG Lake, the stadium) become plain areas.
     areas = []
@@ -194,11 +197,13 @@ def main(src, out):
 
     # Buildings on top. Each gets an id so it can have its own roof and a door.
     next_id = 1
+    building_shapes = {}
     for tags, pts, key in areas:
         if "building" not in tags or tags.get("building") == "no" and "name" not in tags:
             continue
         this = next_id
         next_id += 1
+        building_shapes[this] = (tags, pts, key)
         name = tags.get("name")
         if name:
             bnames[this] = name
@@ -351,8 +356,100 @@ def main(src, out):
         rle += [flat[i], j - i]
         i = j
 
+    # Real shapes, in tile units, for drawing roads and buildings at pixel level.
+    def r2(v):
+        return round(v, 2)
+
+    def simplify(pts, tol):
+        if len(pts) < 3:
+            return pts
+        def dp(a, b):
+            (ax, ay), (bx, by) = pts[a][:2], pts[b][:2]
+            dx, dy = bx - ax, by - ay
+            L = math.hypot(dx, dy) or 1e-9
+            best, bi = -1, -1
+            for i in range(a + 1, b):
+                px_, py_ = pts[i][:2]
+                d = abs(dy * px_ - dx * py_ + bx * ay - by * ax) / L
+                if d > best:
+                    best, bi = d, i
+            if best > tol:
+                return dp(a, bi)[:-1] + dp(bi, b)
+            return [pts[a], pts[b]]
+        return dp(0, len(pts) - 1)
+
+    def simplify_ring(pts, tol):
+        # a closed ring starts and ends on the same point, so simplify it as two halves
+        if len(pts) < 5:
+            return pts
+        mid = len(pts) // 2
+        return simplify(pts[:mid + 1], tol)[:-1] + simplify(pts[mid:], tol)
+
+    ROAD_W = {"primary": 26, "primary_link": 20, "secondary": 24, "tertiary": 22, "unclassified": 18,
+              "residential": 18, "living_street": 14, "service": 12,
+              "footway": 6, "path": 6, "pedestrian": 10, "cycleway": 8, "steps": 6, "track": 8}
+    # nodes shared by more than one road are junctions; simplification must keep them
+    use = {}
+    for wid, (tags, _) in ways.items():
+        if tags.get("highway") in ROAD_W:
+            for nd in way_nodes[wid]:
+                use[nd] = use.get(nd, 0) + 1
+    junction = set(nd for nd, n in use.items() if n > 1)
+
+    def simplify_keep(pts, refs, tol):
+        out = []
+        start = 0
+        for i in range(1, len(pts)):
+            if i == len(pts) - 1 or refs[i] in junction:
+                part = simplify(pts[start:i + 1], tol)
+                out += part if not out else part[1:]
+                start = i
+        return out
+
+    roads = []
+    rails = []
+    for wid, (tags, _) in ways.items():
+        w_el = None
+        hw = tags.get("highway")
+        if hw in ROAD_W or tags.get("railway") == "rail":
+            # keep node ids so NPCs can follow the network
+            pts, refs = [], []
+            for nd in way_nodes[wid]:
+                if nd in nodes:
+                    x, y = nodes[nd]
+                    pts.append([r2(x), r2(y), int(nd) % 2147483647])
+                    refs.append(nd)
+            if len(pts) < 2:
+                continue
+            pts = simplify_keep(pts, refs, 0.04)
+            if hw in ROAD_W:
+                roads.append({"c": hw, "w": ROAD_W[hw], "b": 1 if tags.get("bridge") == "yes" else 0, "p": pts})
+            else:
+                rails.append([[q[0], q[1]] for q in pts])
+
+    vareas = []
+    for (tags, pts, _), k in cover:
+        kind = {WATER: "water", PITCH: "pitch", PARK: "park", FARM: "farm", TREE: "forest"}.get(k)
+        if kind and len(pts) > 2:
+            vareas.append({"k": kind, "p": [[r2(x), r2(y)] for x, y in simplify_ring(pts, 0.06)]})
+
+    vbuild = []
+    for b_id, (tags, pts, key) in building_shapes.items():
+        poly = simplify_ring([[r2(x), r2(y)] for x, y in pts], 0.08)
+        if len(poly) > 1 and poly[0] == poly[-1]:
+            poly = poly[:-1]
+        if len(poly) < 3:
+            continue
+        lv = tags.get("building:levels")
+        try:
+            lv = int(float(lv)) if lv else None
+        except ValueError:
+            lv = None
+        vbuild.append({"id": b_id, "osm": key, "lv": lv, "p": poly})
+
     data = {
         "w": W, "h": H, "metresPerTile": M_PER_TILE,
+        "roads": roads, "rails": rails, "areas": vareas, "buildings": vbuild,
         "bounds": [minlat, minlon, maxlat, maxlon],
         "tiles": tiles, "bids": rle,
         "buildingNames": {str(k): v for k, v in bnames.items()},

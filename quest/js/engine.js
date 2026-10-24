@@ -26,36 +26,10 @@
   function tileAt(x, y) { return x < 0 || y < 0 || x >= W || y >= H ? T.TREE : tiles[y * W + x]; }
   function bidAt(x, y) { return x < 0 || y < 0 || x >= W || y >= H ? 0 : bids[y * W + x]; }
   function solidTile(t) { return t === T.TREE || t === T.BUILDING || t === T.WATER || t === T.RAIL; }
-  function solidAt(x, y) { return solidTile(tileAt(x, y)) || blocked[y * W + x] === 1; }
-  var blocked = new Uint8Array(W * H);
+  function solidAt(x, y) { return solidTile(tileAt(x, y)); }
 
-  var looks = {};        // bid -> 'brick'
-  var doors = {};        // "x,y" of building tile that shows a door
-  var lamps = [];        // {x, y} tile coords
-  var lampGrid = {};
-
-  Object.keys(MAP.landmarks).forEach(function (k) {
-    var l = MAP.landmarks[k];
-    if (l.bid) doors[l.bx + ',' + l.by] = true;
-  });
-
-  // Street lamps on the verge beside roads.
-  (function () {
-    for (var y = 1; y < H - 1; y++) for (var x = 1; x < W - 1; x++) {
-      if (tiles[y * W + x] !== T.ROAD) continue;
-      if (A.hash(x, y, 777) > 0.07) continue;
-      var opts = [[0, 1], [0, -1], [1, 0], [-1, 0]];
-      for (var i = 0; i < 4; i++) {
-        var lx = x + opts[i][0], ly = y + opts[i][1];
-        var t = tiles[ly * W + lx];
-        if ((t === T.GRASS || t === T.PARK) && !lampGrid[(lx >> 2) + ',' + (ly >> 2)]) {
-          lamps.push({ x: lx, y: ly });
-          lampGrid[(lx >> 2) + ',' + (ly >> 2)] = true;
-          break;
-        }
-      }
-    }
-  })();
+  var V = window.VEC;
+  var lamps = V.lamps;   // {x, y} in pixels
 
   /* ---------- Canvas ---------- */
 
@@ -117,54 +91,35 @@
 
   var CH = 16, chunks = {}, chunkOrder = [];
 
-  function nbOf(x, y) {
-    var t = function (a, b) { var v = tileAt(a, b); return v === T.TREE ? T.GRASS : v; };
-    return {
-      n: t(x, y - 1), s: t(x, y + 1), w: t(x - 1, y), e: t(x + 1, y),
-      nB: bidAt(x, y - 1), sB: bidAt(x, y + 1), wB: bidAt(x - 1, y), eB: bidAt(x + 1, y)
-    };
-  }
-
-  function drawGround(g, x, y, tx, ty) {
-    var t = tileAt(tx, ty), nb = nbOf(tx, ty);
-    switch (t) {
-      case T.ROAD: A.road(g, x, y, tx, ty, nb); break;
-      case T.PATH: A.path(g, x, y, tx, ty, nb); break;
-      case T.WATER: A.water(g, x, y, tx, ty, nb, 0); break;
-      case T.PITCH: A.pitch(g, x, y, tx, ty, nb); break;
-      case T.PARK: A.grass(g, x, y, tx, ty, A.P.park, A.P.parkDark, A.P.grassLight); break;
-      case T.RAIL: A.rail(g, x, y, tx, ty, nb); break;
-      case T.FARM: A.farm(g, x, y, tx, ty); break;
-      case T.PLAZA: A.plaza(g, x, y, tx, ty); break;
-      case T.SAND: A.px(g, x, y, S, S, A.P.sand); break;
-      case T.BUILDING: {
-        var b = bidAt(tx, ty);
-        A.building(g, x, y, tx, ty, nb, b, looks[b], !!doors[tx + ',' + ty], false);
-        break;
-      }
-      default: A.grass(g, x, y, tx, ty, A.P.grass, A.P.grassDark, A.P.grassLight);
-    }
-  }
-
   function getChunk(cx, cy) {
     var key = cx + ',' + cy;
     var c = chunks[key];
     if (c) return c;
-    c = document.createElement('canvas');
-    c.width = c.height = CH * S;
-    var g = c.getContext('2d');
-    for (var y = 0; y < CH; y++) for (var x = 0; x < CH; x++) {
-      var tx = cx * CH + x, ty = cy * CH + y;
-      if (tx >= W || ty >= H) continue;
-      drawGround(g, x * S, y * S, tx, ty);
-    }
+    c = V.chunk(cx, cy);
     chunks[key] = c;
     chunkOrder.push(key);
     if (chunkOrder.length > 90) delete chunks[chunkOrder.shift()];
     return c;
   }
 
-  function invalidateChunks() { chunks = {}; chunkOrder = []; }
+  // Name tag for the building you're standing next to.
+  var placeEl = document.getElementById('place'), placeName = '', placeT = 0;
+  function updatePlace(dt) {
+    placeT -= dt;
+    if (placeT > 0) return;
+    placeT = 0.2;
+    var name = V.nameNear(player.x, player.y);
+    if (name === placeName) return;
+    placeName = name;
+    if (name) placeEl.textContent = prettyName(name);
+    placeEl.classList.toggle('show', !!name);
+  }
+  function prettyName(n) {
+    // OSM has some names in capitals; tidy them for the tag
+    if (n === n.toUpperCase()) n = n.toLowerCase().replace(/\b([a-z])/g, function (m) { return m.toUpperCase(); }).replace(/\b(Of|And|The)\b/g, function (m) { return m.toLowerCase(); });
+    return n.replace('IIT Kharagpur - ', '').replace('Terese', 'Teresa').replace(/\s+/g, ' ');
+  }
+
 
   /* ---------- Entities ---------- */
 
@@ -502,11 +457,29 @@
   var cam = { x: 0, y: 0 };
   var lastStepSound = 0;
 
+  // feet box against the 4 px collision grid built from the real footprints
+  // On the cycle, anything off the road counts as a wall: the kerb is a guardrail.
+  // (If you get on somewhere off-road you can ride until you reach one.)
+  var bikeRail = false;
+  function blockedPx(x, y) { return V.solidPx(x, y) || (bikeRail && !V.onRoad(x, y)); }
   function collides(x, y) {
-    var x0 = Math.floor((x - 5) / S), x1 = Math.floor((x + 4) / S);
-    var y0 = Math.floor((y - 5) / S), y1 = Math.floor((y - 1) / S);
-    for (var ty = y0; ty <= y1; ty++) for (var tx = x0; tx <= x1; tx++) if (solidAt(tx, ty)) return true;
-    return false;
+    for (var yy = y - 5; yy <= y - 1; yy += 2) for (var xx = x - 5; xx <= x + 4; xx += 3) if (blockedPx(xx | 0, yy | 0)) return true;
+    return blockedPx((x + 4) | 0, (y - 1) | 0) || blockedPx((x + 4) | 0, (y - 5) | 0);
+  }
+
+  // Riding: go where you point, and if the road bends, lean round it instead of stopping dead.
+  function ride(dx, dy) {
+    if (!collides(player.x + dx, player.y + dy)) { player.x += dx; player.y += dy; return; }
+    var L = Math.hypot(dx, dy), a0 = Math.atan2(dy, dx);
+    var tries = [25, -25, 50, -50, 75, -75];
+    for (var i = 0; i < tries.length; i++) {
+      var a = a0 + tries[i] * Math.PI / 180, k = Math.cos(tries[i] * Math.PI / 180);
+      var mx = Math.cos(a) * L * Math.max(0.55, k), my = Math.sin(a) * L * Math.max(0.55, k);
+      if (!collides(player.x + mx, player.y + my)) { player.x += mx; player.y += my; return; }
+    }
+    // last resort: the old axis-by-axis slide
+    moveAxis(player, dx, 0);
+    moveAxis(player, 0, dy);
   }
 
   function moveAxis(e, dx, dy) {
@@ -596,10 +569,12 @@
     player.moving = mag > 0;
     if (player.moving) {
       player.dir = Math.abs(ix) > Math.abs(iy) ? (ix > 0 ? 'right' : 'left') : (iy > 0 ? 'down' : 'up');
-      moveAxis(player, ix * speed * dt, 0);
-      moveAxis(player, 0, iy * speed * dt);
+      bikeRail = player.bike && V.onRoad(player.x | 0, (player.y - 3) | 0);
+      if (player.bike) ride(ix * speed * dt, iy * speed * dt);
+      else { moveAxis(player, ix * speed * dt, 0); moveAxis(player, 0, iy * speed * dt); }
+      bikeRail = false;
       player.stepT += dt * (player.bike ? 6 : 8);
-      player.step = Math.floor(player.stepT) % 2;
+      player.step = Math.floor(player.stepT) % 4;
       if (!player.bike && WORLD.t - lastStepSound > 0.32) { AUDIO.sfx('step'); lastStepSound = WORLD.t; }
     } else {
       player.step = 0;
@@ -629,49 +604,76 @@
     }
 
     updateNPCs(dt);
+    updatePlace(dt);
 
     var tx = player.x, ty = player.y - 8;
     cam.x += (tx - cam.x) * Math.min(1, dt * 8);
     cam.y += (ty - cam.y) * Math.min(1, dt * 8);
   }
 
+  // Walkers follow the real road network, keeping to the left as people do in India.
   function updateNPCs(dt) {
     npcs.forEach(function (n) {
       if (n.talking || !n.wander) { n.step = 0; return; }
-      if (Math.abs(n.x - player.x) > 500 || Math.abs(n.y - player.y) > 400) return;   // asleep offscreen
+      if (Math.abs(n.x - player.x) > 520 || Math.abs(n.y - player.y) > 420) return;   // asleep offscreen
       if (n.wait > 0) { n.wait -= dt; n.step = 0; return; }
-      if (!n.target) pickNext(n);
-      if (!n.target) { n.wait = 1 + Math.random() * 2; return; }
-      var dx = n.target.x - n.x, dy = n.target.y - n.y, d = Math.hypot(dx, dy);
-      var sp = (n.bike ? 60 : 28) * dt;
-      if (d <= sp) { n.x = n.target.x; n.y = n.target.y; n.target = null; if (Math.random() < 0.05) n.wait = 1 + Math.random() * 3; }
-      else { n.x += dx / d * sp; n.y += dy / d * sp; }
+      if (!n.route) {
+        var nr = V.nearestRoad(n.x, n.y, !n.bike);
+        if (!nr) { n.wander = false; return; }
+        n.route = { ri: nr.ri, i: nr.i, dir: Math.random() < 0.5 ? 1 : -1 };
+        n.side = n.bike ? 0.28 : 0.42;
+        fixRouteEnd(n);
+      }
+      var rd = V.roads[n.route.ri], j = n.route.i + n.route.dir;
+      var a = rd.p[n.route.i], b = rd.p[j];
+      var dx0 = b[0] - a[0], dy0 = b[1] - a[1], L = Math.hypot(dx0, dy0) || 1;
+      var off = rd.foot ? 0 : rd.w * n.side;
+      var tx = b[0] + dy0 / L * off, ty = b[1] - dx0 / L * off + 4;   // left of travel
+      var dx = tx - n.x, dy = ty - n.y, d = Math.hypot(dx, dy);
+      var sp = (n.bike ? 58 : 26) * dt;
+      if (d <= sp + 0.5) {
+        n.route.i = j;
+        nextLeg(n);
+        if (Math.random() < 0.03) n.wait = 1 + Math.random() * 3;
+      } else {
+        n.x += dx / d * sp; n.y += dy / d * sp;
+        n.dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
+      }
       n.stepT = (n.stepT || 0) + dt * (n.bike ? 5 : 6);
-      n.step = Math.floor(n.stepT) % 2;
+      n.step = Math.floor(n.stepT) % 4;
     });
   }
 
-  var DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
-  function pickNext(n) {
-    var tx = Math.floor(n.x / S), ty = Math.floor((n.y - 1) / S);
-    var ok = n.bike ? function (t) { return t === T.ROAD; } : function (t) { return t === T.ROAD || t === T.PATH || t === T.PLAZA; };
+  function fixRouteEnd(n) {
+    var rd = V.roads[n.route.ri];
+    if (n.route.i + n.route.dir < 0 || n.route.i + n.route.dir >= rd.p.length) n.route.dir *= -1;
+  }
+
+  // at each point: carry on, or turn onto another road that meets here
+  function nextLeg(n) {
+    var rd = V.roads[n.route.ri], q = rd.p[n.route.i];
+    var atEnd = n.route.i + n.route.dir < 0 || n.route.i + n.route.dir >= rd.p.length;
+    var refs = V.nodeRefs[q[2]] || [];
     var opts = [];
-    Object.keys(DIRS).forEach(function (k) {
-      var nx = tx + DIRS[k][0], ny = ty + DIRS[k][1];
-      if (ok(tileAt(nx, ny))) opts.push(k);
+    refs.forEach(function (ref) {
+      var r2 = V.roads[ref[0]];
+      if (n.bike && r2.foot) return;
+      if (ref[1] + 1 < r2.p.length) opts.push({ ri: ref[0], i: ref[1], dir: 1 });
+      if (ref[1] - 1 >= 0) opts.push({ ri: ref[0], i: ref[1], dir: -1 });
     });
-    if (!opts.length) return;
-    var back = { up: 'down', down: 'up', left: 'right', right: 'left' }[n.dir];
-    var choice = opts.indexOf(n.dir) >= 0 && Math.random() < 0.8 ? n.dir : opts[Math.floor(Math.random() * opts.length)];
-    if (choice === back && opts.length > 1 && Math.random() < 0.85) choice = opts.filter(function (o) { return o !== back; })[0];
-    n.dir = choice;
-    n.target = { x: (tx + DIRS[choice][0]) * S + 8, y: (ty + DIRS[choice][1]) * S + 12 };
+    var onward = opts.filter(function (o) { return !(o.ri === n.route.ri && o.dir !== n.route.dir); });
+    if (!atEnd && (refs.length < 2 || Math.random() < 0.55)) return;     // keep going straight
+    var pick = onward.length ? onward[Math.floor(Math.random() * onward.length)] : null;
+    if (pick) n.route = pick;
+    else { n.route.dir *= -1; }                                         // dead end: turn round
+    fixRouteEnd(n);
   }
 
   function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
 
   /* ---------- Rendering ---------- */
 
+  var visibleB = [];
   function render() {
     var c = ctx;
     c.setTransform(1, 0, 0, 1, 0, 0);
@@ -695,35 +697,19 @@
     var tx0 = Math.max(0, Math.floor(left / S) - 1), tx1 = Math.min(W - 1, Math.ceil((left + viewW) / S) + 1);
     var ty0 = Math.max(0, Math.floor(top / S) - 1), ty1 = Math.min(H - 1, Math.ceil((top + viewH) / S) + 2);
 
-    // water shimmer
-    var frame = Math.floor(WORLD.t * 2) % 6;
-    c.fillStyle = A.P.waterLight;
-    for (var wy = ty0; wy <= ty1; wy++) for (var wx = tx0; wx <= tx1; wx++) {
-      if (tiles[wy * W + wx] !== T.WATER) continue;
-      var sx = (Math.floor(A.hash(wx, wy, 80) * 12) + frame * 2) % 13;
-      c.fillRect(wx * S + sx, wy * S + 4 + (frame % 2), 3, 1);
-    }
-
-    // windows light up after dark (about half of them: somebody is always studying)
-    if (WORLD.darkness > 0.3) {
-      c.fillStyle = A.P.windowLit;
-      c.globalAlpha = Math.min(1, (WORLD.darkness - 0.3) * 2.5);
-      for (var ly = ty0; ly <= ty1; ly++) for (var lx = tx0; lx <= tx1; lx++) {
-        var lb = bids[ly * W + lx];
-        if (!lb || bidAt(lx, ly + 1) === lb || doors[lx + ',' + ly] || A.hash(lx, ly, 404) > 0.55) continue;
-        if (A.hash(lx, ly, 405) > 0.5) c.fillRect(lx * S + 3, ly * S + 6, 4, 5);
-        if (A.hash(lx, ly, 406) > 0.4) c.fillRect(lx * S + 9, ly * S + 6, 4, 5);
-      }
-      c.globalAlpha = 1;
-    }
-
-    // tall things, back to front
+    // tall things, back to front: trees, lamps, buildings (in strips), signs, people
+    var x0 = left - 40, y0 = top - 20, x1 = left + viewW + 40, y1 = top + viewH + 80;
     var draw = [];
-    for (var y = ty0; y <= ty1; y++) for (var x = tx0; x <= tx1; x++) {
-      if (tiles[y * W + x] === T.TREE) draw.push({ y: y * S + 15, tx: x, ty: y, k: 0 });
-    }
-    lamps.forEach(function (l) {
-      if (l.x >= tx0 && l.x <= tx1 && l.y >= ty0 && l.y <= ty1) draw.push({ y: l.y * S + 12, tx: l.x, ty: l.y, k: 1 });
+    V.visibleTrees(x0, y0, x1, y1).forEach(function (t) { draw.push({ y: t.y, o: t, k: 0 }); });
+    lamps.forEach(function (l) { if (l.x > x0 && l.x < x1 && l.y > y0 && l.y < y1 + 30) draw.push({ y: l.y, o: l, k: 1 }); });
+    visibleB = V.visibleBuildings(x0, y0, x1, y1 + 60);
+    visibleB.forEach(function (b) {
+      var sp = V.building(b);
+      sp.strips.forEach(function (st) {
+        var sx = sp.x + st.sx;
+        if (sx + st.sw < x0 || sx > x1) return;
+        draw.push({ y: st.baseY, sp: sp, st: st, k: 6 });
+      });
     });
     signs.forEach(function (s) { if (!s.hidden && near(s, left, top)) draw.push({ y: s.y, o: s, k: 2 }); });
     items.forEach(function (it) { if (near(it, left, top)) draw.push({ y: it.y, o: it, k: 3 }); });
@@ -733,11 +719,18 @@
     var night = WORLD.darkness > 0.45;
     for (var i = 0; i < draw.length; i++) {
       var d = draw[i];
-      if (d.k === 0) A.tree(c, d.tx * S, d.ty * S, d.tx, d.ty);
-      else if (d.k === 1) A.lamp(c, d.tx * S, d.ty * S, night);
-      else if (d.k === 2) A.sign(c, Math.round(d.o.x - 8), Math.round(d.o.y - 15));
-      else if (d.k === 3) (d.o.draw || A.scroll)(c, Math.round(d.o.x - 8), Math.round(d.o.y - 14), WORLD.t);
-      else A.person(c, Math.round(d.o.x - 8), Math.round(d.o.y - 23), d.o.dir, d.o.step, d.o.look, d.o.bike);
+      if (d.k === 0) c.drawImage(A.treeSprite(d.o.tx, d.o.ty), d.o.x - 16, d.o.y - 40);
+      else if (d.k === 1) c.drawImage(A.lampSprite(night), d.o.x - 5, d.o.y - 28);
+      else if (d.k === 6) c.drawImage(d.sp.img, d.st.sx, 0, d.st.sw, d.sp.h, d.sp.x + d.st.sx, d.sp.y, d.st.sw, d.sp.h);
+      else if (d.k === 2) c.drawImage(A.signSprite(), Math.round(d.o.x - 10), Math.round(d.o.y - 18));
+      else if (d.k === 3) c.drawImage(A.scrollSprite(), Math.round(d.o.x - 7), Math.round(d.o.y - 15 + Math.sin(WORLD.t * 4) * 1.5));
+      else c.drawImage(A.personSprite(d.o.look, d.o.dir, d.o.step, d.o.bike), Math.round(d.o.x) - 11, Math.round(d.o.y) - 26);
+    }
+    // a faint ghost of the player on top, so you can see yourself behind trees and buildings
+    if (!attractMode) {
+      c.globalAlpha = 0.38;
+      c.drawImage(A.personSprite(player.look, player.dir, player.step, player.bike), Math.round(player.x) - 11, Math.round(player.y) - 26);
+      c.globalAlpha = 1;
     }
 
     // markers over the objective and over people with something to say
@@ -837,19 +830,10 @@
       lctx.globalCompositeOperation = 'destination-out';
       var strength = Math.min(1, (dark - 0.3) * 2);
       lamps.forEach(function (l) {
-        var x = (l.x * S + 8 - left) / q, y = (l.y * S - 4 - top) / q;
+        var x = (l.x - left) / q, y = (l.y - 25 - top) / q;
         if (x < -20 || y < -20 || x > lw + 20 || y > lh + 20) return;
         hole(x, y + 3, 15, 0.85 * strength);
       });
-      // lit windows
-      var tx0 = Math.max(0, Math.floor(left / S)), tx1 = Math.min(W - 1, Math.ceil((left + viewW) / S));
-      var ty0 = Math.max(0, Math.floor(top / S)), ty1 = Math.min(H - 1, Math.ceil((top + viewH) / S));
-      for (var y = ty0; y <= ty1; y++) for (var x = tx0; x <= tx1; x++) {
-        var b = bids[y * W + x];
-        if (!b || bidAt(x, y + 1) === b) continue;
-        if (A.hash(x, y, 404) > 0.55 || doors[x + ',' + y]) continue;
-        hole((x * S + 8 - left) / q, (y * S + 9 - top) / q, 3.2, 0.95 * strength);
-      }
       hole((player.x - left) / q, (player.y - 10 - top) / q, 12, 0.55 * strength);
       lctx.globalCompositeOperation = 'source-over';
     }
@@ -860,7 +844,7 @@
       // a warm glow where the lamps are
       ctx.globalCompositeOperation = 'lighter';
       lamps.forEach(function (l) {
-        var x = (l.x * S + 8 - left) * zoom, y = (l.y * S - 6 - top) * zoom;
+        var x = (l.x - left) * zoom, y = (l.y - 26 - top) * zoom;
         if (x < -100 || y < -100 || x > canvas.width + 100 || y > canvas.height + 100) return;
         var r = 30 * zoom, g = ctx.createRadialGradient(x, y, 0, x, y, r);
         g.addColorStop(0, 'rgba(255,190,90,' + (0.22 * dark) + ')');
@@ -869,6 +853,12 @@
         ctx.fillRect(x - r, y - r, r * 2, r * 2);
       });
       ctx.globalCompositeOperation = 'source-over';
+      // lit windows sit on top of the dark, so somebody is always up studying
+      ctx.save();
+      ctx.setTransform(zoom, 0, 0, zoom, -Math.round(left * zoom), -Math.round(top * zoom));
+      ctx.globalAlpha = Math.min(1, (dark - 0.3) * 2.2);
+      visibleB.forEach(function (b) { var sp = V.building(b); ctx.drawImage(sp.glow, sp.x, sp.y); });
+      ctx.restore();
     }
     function hole(x, y, r, s) {
       var g = lctx.createRadialGradient(x, y, 0, x, y, r);
@@ -1018,7 +1008,7 @@
     state: state, player: player, world: WORLD,
     landmark: function (k) { return MAP.landmarks[k]; },
     tileAt: tileAt, solidAt: solidAt,
-    setLook: function (bid, look) { looks[bid] = look; invalidateChunks(); },
+    setLook: function () {},
     say: say, choose: choose, toast: toast, banner: banner, sfx: function (n) { AUDIO.sfx(n); },
     randomLook: randomLook,
     setObjective: setObjective,
@@ -1068,8 +1058,8 @@
     walkableNear: function (p) {
       for (var r = 0; r < 12; r++) for (var dy = -r; dy <= r; dy++) for (var dx = -r; dx <= r; dx++) {
         if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
-        var t = tileAt(p.x + dx, p.y + dy);
-        if (!solidTile(t)) return { x: p.x + dx, y: p.y + dy };
+        var t = tileAt(p.x + dx, p.y + dy), cx = (p.x + dx) * S + 8, cy = (p.y + dy) * S + 12;
+        if (!solidTile(t) && !V.solidPx(cx, cy) && !V.solidPx(cx, cy - 6)) return { x: p.x + dx, y: p.y + dy };
       }
       return p;
     },

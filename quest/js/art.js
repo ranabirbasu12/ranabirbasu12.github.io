@@ -1,6 +1,7 @@
-/* Pixel art, all drawn in code.
-   Tiles are drawn straight into map chunks (they need their neighbours for edges and walls);
-   people are drawn per frame from a small look description. */
+/* 16-bit pixel art, all drawn in code: the palette, a small rasteriser, and the cached
+   sprites (trees, people, lamps, signs, the Main Building tower), each with a dark outline.
+   The ground and buildings are drawn from the real map shapes in vector.js.
+   Light comes from the upper left. */
 
 (function () {
   'use strict';
@@ -9,335 +10,407 @@
   var CHARS = 'gTr.BwpkR=fs';
   var S = 16;
 
-  var P = {
-    grass: '#5c9e3f', grassDark: '#4c8a35', grassLight: '#70b24b', blade: '#3e7a2e',
-    park: '#69ae4a', parkDark: '#5a9c40',
-    pitch: '#55a046', pitchStripe: '#5fab4f', pitchLine: '#e9f2dc',
-    canopy: '#2f6e34', canopyLight: '#46923f', canopyHi: '#5aa84a', canopyDark: '#20502a', trunk: '#6b4a2b',
-    road: '#5d6169', roadDark: '#52565e', roadLight: '#686c74', kerb: '#a3a39a', kerbDark: '#7f7f77',
-    path: '#bd9f6c', pathDark: '#a98b5b', pathLight: '#cdb07e',
-    water: '#3b7cc0', waterDark: '#2f69a8', waterLight: '#6aa6dd', bank: '#8a7a52',
-    ballast: '#8b8172', sleeper: '#5b4330', rail: '#c3c7cb',
-    plaza: '#cbc1ae', plazaDark: '#b7ad9a',
-    farm: '#a08e3e', farmDark: '#857531',
-    sand: '#d8c58f',
-    wall: '#e6d8bc', wallShade: '#cdbd9d', wallDark: '#9c8b6c', window: '#3d5a73', windowLit: '#ffd77a', door: '#6b4128',
-    brick: '#b4553c', brickDark: '#8e3f2c', brickLight: '#c96a4f',
-    shadow: 'rgba(20,30,20,0.28)'
-  };
-
-  var ROOFS = [
-    ['#a64a36', '#c25e45', '#7f3726'],  // terracotta
-    ['#6f7f8e', '#8494a3', '#566472'],  // slate
-    ['#b8904d', '#cea660', '#8e6c35'],  // ochre
-    ['#7f5b4c', '#99705f', '#5f4237'],  // brown
-    ['#5d7d68', '#729580', '#465e4f'],  // green tin
-    ['#9a9a96', '#b2b2ad', '#787874'],  // concrete
-    ['#8a4f5d', '#a4636f', '#673a45']   // plum
-  ];
-
-  // Buildings that should look like themselves.
-  var SPECIAL_ROOF = { brick: ['#b4553c', '#ca6c50', '#86392a'] };
-
   function hash(x, y, s) {
     var h = (x * 374761393 + y * 668265263 + (s || 0) * 2147483647) | 0;
     h = (h ^ (h >>> 13)) * 1274126177;
     return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
   }
 
-  function px(g, x, y, w, h, c) { g.fillStyle = c; g.fillRect(x, y, w, h); }
-
-  /* ---------- Ground tiles ---------- */
-
-  function grass(g, x, y, tx, ty, base, dark, light) {
-    px(g, x, y, S, S, base);
-    var n = 3 + Math.floor(hash(tx, ty, 1) * 4);
-    for (var i = 0; i < n; i++) {
-      var bx = x + Math.floor(hash(tx, ty, 10 + i) * 15), by = y + Math.floor(hash(tx, ty, 20 + i) * 14);
-      px(g, bx, by, 1, 2, i % 2 ? dark : P.blade);
-      if (hash(tx, ty, 30 + i) > 0.7) px(g, bx + 1, by + 1, 1, 1, light);
-    }
-    if (hash(tx, ty, 2) > 0.93) {
-      // tiny flowers
-      var fc = ['#f2d24b', '#ffffff', '#e86a8a'][Math.floor(hash(tx, ty, 3) * 3)];
-      var fx = x + 3 + Math.floor(hash(tx, ty, 4) * 9), fy = y + 3 + Math.floor(hash(tx, ty, 5) * 9);
-      px(g, fx, fy, 1, 1, fc); px(g, fx + 2, fy + 1, 1, 1, fc); px(g, fx + 1, fy + 2, 1, 1, fc);
-    }
-  }
-
-  function edgeShade(g, x, y, nb, kind, c) {
-    // darken edges that meet a different surface
-    if (nb.n !== kind) px(g, x, y, S, 1, c);
-    if (nb.s !== kind) px(g, x, y + S - 1, S, 1, c);
-    if (nb.w !== kind) px(g, x, y, 1, S, c);
-    if (nb.e !== kind) px(g, x + S - 1, y, 1, S, c);
-  }
-
-  function road(g, x, y, tx, ty, nb) {
-    px(g, x, y, S, S, P.road);
-    for (var i = 0; i < 5; i++) {
-      px(g, x + Math.floor(hash(tx, ty, 40 + i) * 16), y + Math.floor(hash(tx, ty, 50 + i) * 16), 1, 1, i % 2 ? P.roadDark : P.roadLight);
-    }
-    var isRoad = function (t) { return t === T.ROAD || t === T.PATH || t === T.PLAZA; };
-    if (!isRoad(nb.n)) { px(g, x, y, S, 2, P.kerb); px(g, x, y + 2, S, 1, P.kerbDark); }
-    if (!isRoad(nb.s)) { px(g, x, y + S - 2, S, 2, P.kerb); }
-    if (!isRoad(nb.w)) { px(g, x, y, 2, S, P.kerb); px(g, x + 2, y, 1, S, P.kerbDark); }
-    if (!isRoad(nb.e)) { px(g, x + S - 2, y, 2, S, P.kerb); }
-  }
-
-  function path(g, x, y, tx, ty, nb) {
-    px(g, x, y, S, S, P.path);
-    for (var i = 0; i < 6; i++) {
-      px(g, x + Math.floor(hash(tx, ty, 60 + i) * 15), y + Math.floor(hash(tx, ty, 70 + i) * 15), 2, 1, i % 2 ? P.pathDark : P.pathLight);
-    }
-    // soft grass fringe
-    var c = P.grassDark;
-    if (nb.n === T.GRASS || nb.n === T.TREE) for (var a = 0; a < S; a += 3) px(g, x + a, y, 2, 1 + (a % 2), c);
-    if (nb.s === T.GRASS || nb.s === T.TREE) for (var b = 1; b < S; b += 3) px(g, x + b, y + S - 1, 2, 1, c);
-  }
-
-  function water(g, x, y, tx, ty, nb, frame) {
-    px(g, x, y, S, S, P.water);
-    for (var i = 0; i < 3; i++) {
-      var wx = (Math.floor(hash(tx, ty, 80 + i) * 12) + frame * 2) % 13;
-      var wy = 3 + i * 5 + Math.floor(hash(tx, ty, 90 + i) * 2);
-      px(g, x + wx, y + wy, 3, 1, P.waterLight);
-    }
-    if (nb.n !== T.WATER) { px(g, x, y, S, 2, P.bank); px(g, x, y + 2, S, 1, P.waterDark); }
-    if (nb.w !== T.WATER) px(g, x, y, 1, S, P.bank);
-    if (nb.e !== T.WATER) px(g, x + S - 1, y, 1, S, P.bank);
-    if (nb.s !== T.WATER) px(g, x, y + S - 1, S, 1, P.bank);
-  }
-
-  function pitch(g, x, y, tx, ty, nb) {
-    px(g, x, y, S, S, (Math.floor(tx / 2) % 2) ? P.pitch : P.pitchStripe);
-    if (nb.n !== T.PITCH) px(g, x, y + 1, S, 1, P.pitchLine);
-    if (nb.s !== T.PITCH) px(g, x, y + S - 2, S, 1, P.pitchLine);
-    if (nb.w !== T.PITCH) px(g, x + 1, y, 1, S, P.pitchLine);
-    if (nb.e !== T.PITCH) px(g, x + S - 2, y, 1, S, P.pitchLine);
-  }
-
-  function rail(g, x, y, tx, ty, nb) {
-    px(g, x, y, S, S, P.ballast);
-    for (var i = 0; i < 8; i++) px(g, x + Math.floor(hash(tx, ty, 100 + i) * 16), y + Math.floor(hash(tx, ty, 110 + i) * 16), 1, 1, '#a1978a');
-    var vertical = nb.n === T.RAIL || nb.s === T.RAIL;
-    if (vertical) {
-      for (var s = 1; s < S; s += 4) px(g, x + 2, y + s, 12, 2, P.sleeper);
-      px(g, x + 4, y, 1, S, P.rail); px(g, x + 11, y, 1, S, P.rail);
-    } else {
-      for (var t = 1; t < S; t += 4) px(g, x + t, y + 2, 2, 12, P.sleeper);
-      px(g, x, y + 4, S, 1, P.rail); px(g, x, y + 11, S, 1, P.rail);
-    }
-  }
-
-  function farm(g, x, y, tx, ty) {
-    px(g, x, y, S, S, P.farm);
-    for (var r = 1; r < S; r += 4) px(g, x, y + r, S, 1, P.farmDark);
-    for (var i = 0; i < 4; i++) px(g, x + Math.floor(hash(tx, ty, 120 + i) * 15), y + 2 + i * 4, 1, 1, '#c2b05a');
-  }
-
-  function plaza(g, x, y, tx, ty) {
-    px(g, x, y, S, S, P.plaza);
-    px(g, x, y + 7, S, 1, P.plazaDark); px(g, x, y + 15, S, 1, P.plazaDark);
-    px(g, x + ((ty % 2) ? 4 : 11), y, 1, 7, P.plazaDark); px(g, x + ((ty % 2) ? 11 : 4), y + 8, 1, 7, P.plazaDark);
-  }
-
-  /* ---------- Buildings ---------- */
-
-  function roofFor(bid, look) {
-    if (look && SPECIAL_ROOF[look]) return SPECIAL_ROOF[look];
-    return ROOFS[Math.floor(hash(bid, 7, 3) * ROOFS.length)];
-  }
-
-  // A building tile is either roof (top face) or the front wall (when the tile below is not this building).
-  function building(g, x, y, tx, ty, nb, bid, look, isDoor, lit) {
-    var roof = roofFor(bid, look);
-    var brick = look === 'brick';
-    var sameS = nb.sB === bid, sameN = nb.nB === bid, sameW = nb.wB === bid, sameE = nb.eB === bid;
-    if (!sameS) {
-      // front wall
-      var wc = brick ? P.brick : P.wall, ws = brick ? P.brickDark : P.wallShade;
-      px(g, x, y, S, S, wc);
-      if (brick) for (var r = 2; r < S; r += 3) { px(g, x, y + r, S, 1, P.brickDark); }
-      px(g, x, y, S, 3, roof[2]);           // eave shadow
-      px(g, x, y + S - 2, S, 2, ws);
-      if (isDoor) {
-        px(g, x + 4, y + 5, 8, 11, P.door);
-        px(g, x + 5, y + 6, 6, 9, '#83532f');
-        px(g, x + 9, y + 10, 1, 1, '#e8c56a');
-        px(g, x + 3, y + 4, 10, 1, ws);
-      } else {
-        var wcol = lit ? P.windowLit : P.window;
-        px(g, x + 3, y + 6, 4, 5, wcol); px(g, x + 9, y + 6, 4, 5, wcol);
-        px(g, x + 3, y + 11, 4, 1, ws); px(g, x + 9, y + 11, 4, 1, ws);
-        if (!lit) { px(g, x + 3, y + 6, 1, 1, '#6d8ba3'); px(g, x + 9, y + 6, 1, 1, '#6d8ba3'); }
-      }
-      if (!sameW) px(g, x, y, 1, S, P.wallDark);
-      if (!sameE) px(g, x + S - 1, y, 1, S, P.wallDark);
-      return;
-    }
-    // roof
-    px(g, x, y, S, S, roof[0]);
-    if (hash(bid, ty, 9) > 0.5) for (var k = 3; k < S; k += 5) px(g, x, y + k, S, 1, roof[2]);
-    if (!sameN) px(g, x, y, S, 2, roof[1]);
-    if (!sameW) px(g, x, y, 2, S, roof[1]);
-    if (!sameE) px(g, x + S - 2, y, 2, S, roof[2]);
-    // occasional rooftop water tank, very Indian campus
-    if (sameN && sameW && sameE && hash(tx, ty, bid) > 0.985) {
-      px(g, x + 5, y + 3, 6, 7, '#2d2d2d'); px(g, x + 6, y + 4, 4, 1, '#4a4a4a');
-    }
-  }
-
-  /* ---------- Trees (drawn as tall objects so you can walk behind them) ---------- */
-
-  function tree(g, x, y, tx, ty) {
-    var v = hash(tx, ty, 130);
-    var big = v > 0.55;
-    // shadow on the ground
-    g.fillStyle = P.shadow;
-    g.beginPath(); g.ellipse(x + 8, y + 14, 7, 3, 0, 0, 7); g.fill();
-    px(g, x + 7, y + 8, 3, 7, P.trunk);
-    px(g, x + 7, y + 8, 1, 7, '#7d5a36');
-    var cy = big ? y - 6 : y - 2, r = big ? 9 : 7;
-    blob(g, x + 8, cy + 4, r, P.canopyDark);
-    blob(g, x + 7, cy + 2, r - 1, P.canopy);
-    blob(g, x + 6, cy, r - 3, P.canopyLight);
-    px(g, x + 4, cy - 2, 2, 2, P.canopyHi);
-    px(g, x + 8, cy - 4, 2, 1, P.canopyHi);
-    if (v < 0.12) { // flowering tree: krishnachura / radhachura, common in Bengal
-      for (var i = 0; i < 7; i++) px(g, x + 2 + Math.floor(hash(tx, ty, 140 + i) * 12), cy - 4 + Math.floor(hash(tx, ty, 150 + i) * 10), 2, 2, v < 0.06 ? '#e8572f' : '#f2c230');
-    }
-  }
-
-  function blob(g, cx, cy, r, c) {
-    g.fillStyle = c;
-    for (var dy = -r; dy <= r; dy++) {
-      var w = Math.round(Math.sqrt(r * r - dy * dy));
-      g.fillRect(cx - w, cy + dy, w * 2, 1);
-    }
-  }
-
-  /* ---------- People ---------- */
-
-  // look: {skin, hair, shirt, pants, hairLong, cap, tie}
-  function person(g, x, y, dir, step, look, bike) {
-    var sw = step ? 1 : 0;              // arm/leg swing
-    var bob = step && !bike ? -1 : 0;
-    g.fillStyle = P.shadow;
-    g.beginPath(); g.ellipse(x + 8, y + 22, bike ? 8 : 5, 2, 0, 0, 7); g.fill();
-
-    if (bike) drawBike(g, x, y, dir, step);
-
-    var top = y + 4 + bob + (bike ? -1 : 0);
-    // legs
-    if (!bike) {
-      if (dir === 'left' || dir === 'right') {
-        px(g, x + 6 - sw, top + 13, 2, 5, look.pants);
-        px(g, x + 9 + sw, top + 13, 2, 5, look.pants);
-        px(g, x + 6 - sw, top + 17, 2, 1, '#2b2118'); px(g, x + 9 + sw, top + 17, 2, 1, '#2b2118');
-      } else {
-        px(g, x + 5, top + 13, 2, 5 - sw, look.pants);
-        px(g, x + 9, top + 13, 2, 4 + sw, look.pants);
-        px(g, x + 5, top + 17 - sw, 2, 1, '#2b2118'); px(g, x + 9, top + 16 + sw, 2, 1, '#2b2118');
-      }
-    } else {
-      px(g, x + 5, top + 13, 2, 3, look.pants); px(g, x + 9, top + 13, 2, 3, look.pants);
-    }
-    // body
-    px(g, x + 4, top + 7, 8, 7, look.shirt);
-    px(g, x + 4, top + 13, 8, 1, shade(look.shirt));
-    if (look.tie && dir === 'down') px(g, x + 7, top + 8, 2, 5, look.tie);
-    // arms
-    if (dir === 'left' || dir === 'right') {
-      var ax = dir === 'left' ? x + 6 + sw : x + 8 - sw;
-      px(g, ax, top + 8, 2, 5, shade(look.shirt)); px(g, ax, top + 12, 2, 1, look.skin);
-    } else {
-      px(g, x + 3, top + 8 + (bike ? 0 : sw), 1, 5, shade(look.shirt)); px(g, x + 12, top + 8 + (bike ? 0 : 1 - sw), 1, 5, shade(look.shirt));
-      px(g, x + 3, top + 12 + (bike ? 0 : sw), 1, 1, look.skin); px(g, x + 12, top + 13 - (bike ? 1 : sw), 1, 1, look.skin);
-    }
-    // head
-    px(g, x + 4, top, 8, 7, look.skin);
-    px(g, x + 4, top + 6, 8, 1, shade(look.skin));
-    var hair = look.hair;
-    if (dir === 'up') {
-      px(g, x + 4, top - 1, 8, 6, hair);
-      if (look.hairLong) px(g, x + 4, top + 5, 8, 4, hair);
-    } else {
-      px(g, x + 4, top - 1, 8, 3, hair);
-      px(g, x + 3, top, 1, 3, hair); px(g, x + 12, top, 1, 3, hair);
-      if (dir === 'down') {
-        px(g, x + 6, top + 3, 1, 2, '#1d1d24'); px(g, x + 9, top + 3, 1, 2, '#1d1d24');
-        px(g, x + 7, top + 5, 2, 1, shade(look.skin));
-        if (look.hairLong) { px(g, x + 3, top + 2, 1, 7, hair); px(g, x + 12, top + 2, 1, 7, hair); }
-      } else {
-        var back = dir === 'left' ? x + 9 : x + 4;
-        px(g, back, top + 1, 3, 3, hair);
-        px(g, dir === 'left' ? x + 5 : x + 10, top + 3, 1, 2, '#1d1d24');
-        if (look.hairLong) px(g, back, top + 2, 3, 7, hair);
-      }
-    }
-    if (look.cap) { px(g, x + 3, top - 2, 10, 3, look.cap); if (dir === 'down') px(g, x + 3, top + 1, 10, 1, shade(look.cap)); }
-  }
-
-  function drawBike(g, x, y, dir, step) {
-    var frame = '#2a6fb0', tyre = '#1d1d22';
-    if (dir === 'left' || dir === 'right') {
-      wheel(g, x + 2, y + 18, tyre, step); wheel(g, x + 14, y + 18, tyre, step);
-      px(g, x + 3, y + 16, 11, 1, frame); px(g, x + 7, y + 13, 1, 4, frame);
-      px(g, dir === 'right' ? x + 12 : x + 3, y + 12, 2, 1, '#333');
-    } else {
-      px(g, x + 7, y + 13, 2, 9, tyre);
-      px(g, x + 7, y + (step ? 14 : 16), 2, 1, '#555');
-      px(g, x + 4, y + 13, 8, 1, '#333');
-    }
-  }
-
-  function wheel(g, cx, cy, c, step) {
-    px(g, cx - 2, cy - 3, 4, 1, c); px(g, cx - 2, cy + 2, 4, 1, c);
-    px(g, cx - 3, cy - 2, 1, 4, c); px(g, cx + 2, cy - 2, 1, 4, c);
-    px(g, cx + (step ? -1 : 0), cy - 1, 1, 2, '#777');
-  }
-
-  function shade(hex) {
+  var cache = {};
+  function C(hex) {
+    var c = cache[hex];
+    if (c) return c;
     var n = parseInt(hex.slice(1), 16);
-    var r = Math.max(0, (n >> 16) - 34), gg = Math.max(0, ((n >> 8) & 255) - 34), b = Math.max(0, (n & 255) - 34);
-    return '#' + ((1 << 24) + (r << 16) + (gg << 8) + b).toString(16).slice(1);
+    c = cache[hex] = [n >> 16, (n >> 8) & 255, n & 255];
+    return c;
   }
 
-  /* ---------- Small props ---------- */
+  /* ---------- Palette: ramps run dark to light ---------- */
 
-  function lamp(g, x, y, on) {
-    px(g, x + 7, y - 10, 2, 22, '#3d4248');
-    px(g, x + 5, y - 12, 6, 3, '#2f3338');
-    px(g, x + 6, y - 9, 4, 1, on ? '#ffe6a0' : '#8c9196');
+  var R = {
+    grass: ['#2b4f25', '#386630', '#467f39', '#559542', '#6aab50', '#8cc46a'],
+    park: ['#305626', '#3f6f31', '#4f8a3a', '#62a246', '#7cb95a', '#a1d07a'],
+    pitch: ['#3a7333', '#478a3c', '#52983f', '#5ea648'],
+    leaf: ['#122a17', '#1a3f20', '#24582b', '#317236', '#438c41', '#5fa64e', '#86c36a'],
+    bark: ['#33200f', '#4f3219', '#6d4826', '#8b6034'],
+    road: ['#363940', '#42464d', '#4e525a', '#5a5e66', '#686c74', '#7a7e86'],
+    kerb: ['#5f5e58', '#86857d', '#adaca3', '#cdccc3'],
+    dirt: ['#6e5131', '#8a683c', '#a5804d', '#bd9a62', '#d3b47f'],
+    pave: ['#8a8173', '#a69d8d', '#bdb4a3', '#d0c8b8'],
+    water: ['#173f73', '#1f5290', '#2964a8', '#3779bd', '#5195cf', '#86bde6', '#d2ebf8'],
+    rail: ['#5a5148', '#7a7064', '#958a7c', '#b0a596'],
+    steel: ['#55595e', '#8d9399', '#c9ced3'],
+    wood: ['#3b2412', '#5a3a1f', '#7a522d', '#9c6c3c', '#bd8a50'],
+    farm: ['#6f6128', '#8a7a33', '#a39140', '#bfac58'],
+    sand: ['#b39c62', '#cdb67e', '#e0cc98'],
+    skin: [['#7a4a2c', '#9c6440', '#b98057', '#d29f73'], ['#6a3f25', '#8a5634', '#a76f48', '#c48c62'], ['#8a5a38', '#ad754d', '#c99266', '#e0b08a'], ['#5a341e', '#784729', '#956039', '#b27b50']],
+    outline: '#1c1517',
+    shadow: [12, 24, 16]
+  };
+
+  var BRICK = ['#4f1c13', '#73291c', '#9a3f2a', '#b5543b', '#cf7559'];
+
+  /* ---------- A tiny rasteriser ---------- */
+
+  function Raster(w, h) {
+    this.w = w; this.h = h;
+    this.img = new ImageData(w, h);
+    this.d = this.img.data;
+    this.cx0 = 0; this.cy0 = 0; this.cx1 = w; this.cy1 = h;
+  }
+  Raster.prototype.clip = function (x, y, w, h) { this.cx0 = x; this.cy0 = y; this.cx1 = x + w; this.cy1 = y + h; };
+  Raster.prototype.noclip = function () { this.cx0 = 0; this.cy0 = 0; this.cx1 = this.w; this.cy1 = this.h; };
+  Raster.prototype.px = function (x, y, hex) {
+    x = x | 0; y = y | 0;
+    if (x < this.cx0 || y < this.cy0 || x >= this.cx1 || y >= this.cy1) return;
+    var c = C(hex), i = (y * this.w + x) * 4, d = this.d;
+    d[i] = c[0]; d[i + 1] = c[1]; d[i + 2] = c[2]; d[i + 3] = 255;
+  };
+  // blend a colour over what is there (for shadows and glows)
+  Raster.prototype.pa = function (x, y, rgb, a) {
+    x = x | 0; y = y | 0;
+    if (x < this.cx0 || y < this.cy0 || x >= this.cx1 || y >= this.cy1) return;
+    var i = (y * this.w + x) * 4, d = this.d, da = d[i + 3] / 255;
+    if (da === 0) { d[i] = rgb[0]; d[i + 1] = rgb[1]; d[i + 2] = rgb[2]; d[i + 3] = Math.round(a * 255); return; }
+    d[i] = d[i] + (rgb[0] - d[i]) * a; d[i + 1] = d[i + 1] + (rgb[1] - d[i + 1]) * a; d[i + 2] = d[i + 2] + (rgb[2] - d[i + 2]) * a;
+    d[i + 3] = Math.min(255, d[i + 3] + a * 255 * (1 - da));
+  };
+  Raster.prototype.rect = function (x, y, w, h, hex) {
+    for (var j = 0; j < h; j++) for (var i = 0; i < w; i++) this.px(x + i, y + j, hex);
+  };
+  Raster.prototype.rectA = function (x, y, w, h, rgb, a) {
+    for (var j = 0; j < h; j++) for (var i = 0; i < w; i++) this.pa(x + i, y + j, rgb, a);
+  };
+  Raster.prototype.alpha = function (x, y) {
+    if (x < 0 || y < 0 || x >= this.w || y >= this.h) return 0;
+    return this.d[(y * this.w + x) * 4 + 3];
+  };
+  // a shaded ball lit from the upper left, dithered between tones
+  Raster.prototype.ball = function (cx, cy, r, ramp, ry) {
+    ry = ry || r;
+    for (var y = -ry; y <= ry; y++) for (var x = -r; x <= r; x++) {
+      var nx = x / r, ny = y / ry, d = nx * nx + ny * ny;
+      if (d > 1) continue;
+      var l = -(nx * 0.7 + ny * 0.7) * 0.9 + (1 - d) * 0.35 + (((x + y) & 1) ? 0.08 : -0.08);
+      var t = l > 0.62 ? 4 : l > 0.22 ? 3 : l > -0.18 ? 2 : l > -0.55 ? 1 : 0;
+      this.px(cx + x, cy + y, ramp[Math.min(ramp.length - 1, t + (ramp.length - 5))]);
+    }
+  };
+  Raster.prototype.ellipseA = function (cx, cy, rx, ry, rgb, a) {
+    for (var y = -ry; y <= ry; y++) for (var x = -rx; x <= rx; x++) {
+      if ((x * x) / (rx * rx) + (y * y) / (ry * ry) <= 1) this.pa(cx + x, cy + y, rgb, a);
+    }
+  };
+  Raster.prototype.line = function (x0, y0, x1, y1, hex) {
+    var n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0)) || 1;
+    for (var i = 0; i <= n; i++) this.px(Math.round(x0 + (x1 - x0) * i / n), Math.round(y0 + (y1 - y0) * i / n), hex);
+  };
+  // dark outline round every opaque shape (not round soft shadows)
+  Raster.prototype.outline = function (hex) {
+    var w = this.w, h = this.h, d = this.d, mark = [];
+    for (var y = 0; y < h; y++) for (var x = 0; x < w; x++) {
+      if (d[(y * w + x) * 4 + 3] === 255) continue;
+      if (this.alpha(x - 1, y) === 255 || this.alpha(x + 1, y) === 255 || this.alpha(x, y - 1) === 255 || this.alpha(x, y + 1) === 255) mark.push(x, y);
+    }
+    for (var i = 0; i < mark.length; i += 2) this.px(mark[i], mark[i + 1], hex);
+  };
+  Raster.prototype.canvas = function () {
+    var c = document.createElement('canvas');
+    c.width = this.w; c.height = this.h;
+    c.getContext('2d').putImageData(this.img, 0, 0);
+    return c;
+  };
+
+  /* ---------- Sprites ---------- */
+
+  var sprites = {};
+
+  function sprite(key, w, h, draw, outline) {
+    var s = sprites[key];
+    if (s) return s;
+    var r = new Raster(w, h);
+    draw(r);
+    if (outline !== false) r.outline(R.outline);
+    if (r.after) r.after(r);
+    s = sprites[key] = r.canvas();
+    return s;
   }
 
-  function sign(g, x, y) {
-    g.fillStyle = P.shadow; g.beginPath(); g.ellipse(x + 8, y + 15, 6, 2, 0, 0, 7); g.fill();
-    px(g, x + 7, y + 7, 2, 8, '#6b4a2b');
-    px(g, x + 2, y + 1, 12, 8, '#8a5f35');
-    px(g, x + 3, y + 2, 10, 6, '#c49a5c');
-    px(g, x + 4, y + 4, 8, 1, '#8a5f35'); px(g, x + 4, y + 6, 6, 1, '#8a5f35');
+  // Trees: 32 x 44, trunk base at (16, 40).
+  function treeKind(tx, ty) {
+    var v = hash(tx, ty, 130);
+    if (v < 0.025) return 'krishnachura';
+    if (v < 0.04) return 'radhachura';
+    if (v < 0.1) return 'palm';
+    if (v < 0.45) return 'mango';
+    return 'round' + (v > 0.75 ? 'B' : 'A');
   }
 
-  function scroll(g, x, y, t) {
-    var b = Math.round(Math.sin(t * 4) * 1.5);
-    g.fillStyle = P.shadow; g.beginPath(); g.ellipse(x + 8, y + 14, 5, 2, 0, 0, 7); g.fill();
-    px(g, x + 4, y + 4 + b, 8, 7, '#f1e6c8');
-    px(g, x + 3, y + 3 + b, 10, 2, '#c9a76a'); px(g, x + 3, y + 10 + b, 10, 2, '#c9a76a');
-    px(g, x + 5, y + 6 + b, 6, 1, '#8a7650'); px(g, x + 5, y + 8 + b, 4, 1, '#8a7650');
+  function treeSprite(tx, ty) {
+    var kind = treeKind(tx, ty);
+    var variant = Math.floor(hash(tx, ty, 131) * 3);
+    return sprite('tree:' + kind + variant, 32, 44, function (r) {
+      var Bk = R.bark;
+      r.after = function (rr) { rr.ellipseA(18, 41, 10, 3, R.shadow, 0.3); };
+      if (kind === 'palm') {
+        // a curved coconut palm
+        var lean = variant - 1;
+        for (var y = 40; y > 12; y--) {
+          var x = 16 + Math.round(lean * Math.pow((40 - y) / 28, 2) * 4);
+          r.rect(x - 1, y, 3, 1, (y % 3) ? Bk[2] : Bk[1]);
+          r.px(x - 1, y, Bk[3]);
+        }
+        var cx = 16 + lean * 4, cy = 12;
+        var L = R.leaf;
+        [[-12, 4], [-9, -4], [-3, -8], [4, -8], [10, -4], [12, 5], [0, 6]].forEach(function (d, i) {
+          for (var k = 0; k <= 10; k++) {
+            var t = k / 10, x2 = Math.round(cx + d[0] * t), y2 = Math.round(cy + d[1] * t + Math.pow(t, 2) * 5);
+            r.px(x2, y2, L[4]); r.px(x2, y2 + 1, L[2]);
+            if (k % 2 === 0 && k > 2) { r.px(x2 + (d[0] > 0 ? 0 : 0), y2 + 2, L[3]); }
+          }
+          if (i === 2) r.px(cx - 1, cy - 1, L[5]);
+        });
+        r.ball(cx - 1, cy + 2, 2, ['#3b2412', '#5a3a1f', '#7a522d', '#9c6c3c', '#bd8a50']);
+        r.ball(cx + 2, cy + 2, 2, ['#3b2412', '#5a3a1f', '#7a522d', '#9c6c3c', '#bd8a50']);
+        return;
+      }
+      // trunk
+      r.rect(14, 26, 4, 15, Bk[2]); r.rect(14, 26, 1, 15, Bk[3]); r.rect(17, 26, 1, 15, Bk[1]);
+      r.px(13, 40, Bk[1]); r.px(18, 40, Bk[1]);
+      var Lf = R.leaf;
+      if (kind === 'krishnachura') Lf = ['#4a120a', '#7a1d10', '#a92c15', '#d0421d', '#e8642c', '#f4904a', '#ffc07a'];
+      if (kind === 'radhachura') Lf = ['#5a3e08', '#7f5a0c', '#a77c12', '#c99c1e', '#e4bd36', '#f2d65c', '#fff0a0'];
+      if (kind === 'mango') Lf = ['#0d2412', '#14361a', '#1c4a22', '#265f2b', '#357637', '#4d9046', '#6daa5c'];
+      var big = kind === 'roundB' || kind === 'mango';
+      var top = big ? 6 : 10;
+      r.ball(16, top + 13, big ? 12 : 10, Lf, big ? 10 : 9);
+      r.ball(10 + variant, top + 12, 7, Lf);
+      r.ball(22 - variant, top + 11, 7, Lf);
+      r.ball(15, top + 6, 8, Lf, 7);
+      if (kind === 'krishnachura' || kind === 'radhachura') {
+        // a few green leaves peeking through the blossom
+        for (var g = 0; g < 9; g++) r.px(6 + Math.floor(hash(g, variant, 3) * 20), top + 4 + Math.floor(hash(g, variant, 4) * 16), R.leaf[3 + (g % 2)]);
+      } else {
+        for (var h2 = 0; h2 < 6; h2++) r.px(9 + Math.floor(hash(h2, variant, 5) * 12), top + 3 + Math.floor(hash(h2, variant, 6) * 9), Lf[6]);
+      }
+    });
   }
 
-  function cycle(g, x, y) {
-    wheel(g, x + 3, y + 12, '#1d1d22', 0); wheel(g, x + 13, y + 12, '#1d1d22', 0);
-    px(g, x + 4, y + 10, 9, 1, '#c0392b'); px(g, x + 8, y + 7, 1, 4, '#c0392b');
-    px(g, x + 6, y + 6, 4, 1, '#333'); px(g, x + 12, y + 6, 2, 1, '#333');
+  /* People: 18 x 27 sprite, feet at (9, 25).
+     look: {skin (hex or index), hair, shirt, pants, hairLong, cap, tie, bag, kurta, saree} */
+  function shade(hex, k) {
+    var c = C(hex);
+    var f = function (v) { return Math.max(0, Math.min(255, Math.round(v * k))); };
+    return '#' + ((1 << 24) + (f(c[0]) << 16) + (f(c[1]) << 8) + f(c[2])).toString(16).slice(1);
+  }
+  function skinRamp(look) {
+    if (typeof look.skin === 'number') return R.skin[look.skin % R.skin.length];
+    var b = look.skin;
+    return [shade(b, 0.62), shade(b, 0.8), b, shade(b, 1.12)];
+  }
+
+  function personSprite(look, dir, frame, bike) {
+    var key = 'p:' + JSON.stringify(look) + dir + frame + (bike ? 'b' : '');
+    return sprite(key, 22, 28, function (r) {
+      r.after = function (rr) { rr.ellipseA(11, 26, bike ? 9 : 5, 1, R.shadow, 0.35); };
+      drawPerson(r, look, dir, frame, bike);
+    });
+  }
+
+  function drawPerson(r, look, dir, frame, bike) {
+    var ox = 3, sk = skinRamp(look);
+    var hair = look.hair, hairHi = shade(hair, 1.6), hairLo = shade(hair, 0.7);
+    var sh = look.shirt, shHi = shade(sh, 1.15), shLo = shade(sh, 0.75);
+    var pa = look.pants, paLo = shade(pa, 0.72);
+    var walk = !bike && (frame === 1 || frame === 3);
+    var bob = walk ? 1 : 0;
+    var side = dir === 'left' || dir === 'right';
+    var flip = dir === 'left';
+    var X = function (x) { return flip ? ox + 15 - x : ox + x; };
+    var P = function (x, y, c) { r.px(X(x), y, c); };
+    var RR = function (x, y, w, h, c) { for (var j = 0; j < h; j++) for (var i = 0; i < w; i++) P(x + i, y + j, c); };
+    var top = 2 + bob + (bike ? 1 : 0);
+
+    if (bike) drawBikeUnder(r, dir, frame, X);
+
+    // legs and shoes
+    var shoe = '#2a2119';
+    if (look.saree) {
+      RR(4, top + 14, 8, 8, sh); RR(4, top + 14, 1, 8, shHi); RR(10, top + 14, 2, 8, shLo);
+      RR(4, top + 21, 8, 1, shLo);
+      if (!bike) { P(5, top + 22, shoe); P(10, top + 22, shoe); }
+    } else if (bike) {
+      var up = frame % 2;
+      RR(5, top + 14, 2, 4 - up * 2, pa); RR(9, top + 14, 2, 2 + up * 2, pa);
+      P(5, top + 18 - up * 2, shoe); P(9, top + 16 + up * 2, shoe);
+    } else if (side) {
+      var a = frame === 1 ? 2 : frame === 3 ? -2 : 0;
+      RR(6 + a, top + 15, 2, 6, pa); RR(8 - a, top + 15, 2, 6, paLo);
+      RR(6 + a, top + 21, 3, 1, shoe); RR(8 - a, top + 21, 3, 1, shoe);
+    } else {
+      var l = frame === 1 ? 1 : 0, rr = frame === 3 ? 1 : 0;
+      RR(5, top + 15, 3, 6 - l, pa); RR(8, top + 15, 3, 6 - rr, paLo);
+      RR(5, top + 15, 1, 6 - l, shade(pa, 1.15));
+      RR(5, top + 21 - l, 3, 1, shoe); RR(8, top + 21 - rr, 3, 1, shoe);
+    }
+
+    // torso
+    var bodyH = look.kurta ? 9 : 7;
+    RR(4, top + 9, 8, bodyH, sh);
+    RR(4, top + 9, 1, bodyH, shHi);
+    RR(10, top + 9, 2, bodyH, shLo);
+    RR(4, top + 8 + bodyH, 8, 1, shLo);
+    if (!look.kurta && !look.saree) RR(4, top + 15, 8, 1, '#3a2c22');   // belt
+    if (dir === 'down') {
+      P(7, top + 9, sk[1]); P(8, top + 9, sk[1]);                       // neck
+      if (!look.saree) { P(6, top + 9, shHi); P(9, top + 9, shHi); }   // collar
+      if (look.tie) { RR(7, top + 10, 2, 5, look.tie); P(7, top + 10, shade(look.tie, 1.3)); }
+      if (look.saree) { P(5, top + 10, shLo); P(6, top + 11, shLo); P(7, top + 12, shLo); P(8, top + 13, shLo); P(9, top + 14, shLo); }
+    }
+    if (look.bag && (dir === 'up' || side)) {
+      var bg = look.bag;
+      if (dir === 'up') { RR(5, top + 10, 6, 6, bg); RR(5, top + 10, 6, 1, shade(bg, 1.25)); RR(5, top + 15, 6, 1, shade(bg, 0.7)); }
+      else { RR(2, top + 10, 2, 5, bg); P(2, top + 10, shade(bg, 1.25)); }
+    }
+
+    // arms
+    var swing = walk ? (frame === 1 ? 1 : -1) : 0;
+    if (side) {
+      RR(7 - swing, top + 10, 2, 5, shLo); P(7 - swing, top + 15, sk[2]); P(8 - swing, top + 15, sk[1]);
+    } else if (bike) {
+      RR(3, top + 10, 1, 4, shLo); RR(12, top + 10, 1, 4, shLo); P(3, top + 14, sk[2]); P(12, top + 14, sk[2]);
+    } else {
+      RR(3, top + 10 + Math.max(0, swing), 1, 5, shHi); RR(12, top + 10 + Math.max(0, -swing), 1, 5, shLo);
+      P(3, top + 15 + Math.max(0, swing), sk[2]); P(12, top + 15 + Math.max(0, -swing), sk[1]);
+    }
+
+    // head: 10 wide, 8 tall
+    RR(3, top + 1, 10, 8, sk[2]);
+    RR(3, top + 1, 1, 8, sk[3]);
+    RR(11, top + 1, 2, 8, sk[1]);
+    RR(4, top + 8, 8, 1, sk[1]);
+    if (dir === 'up') {
+      RR(3, top, 10, 7, hair); RR(4, top, 6, 1, hairHi); RR(3, top + 6, 10, 1, hairLo);
+      if (look.hairLong) { RR(3, top + 7, 10, 4, hair); RR(4, top + 10, 8, 1, hairLo); }
+    } else if (side) {
+      RR(3, top, 10, 3, hair); RR(4, top, 5, 1, hairHi);
+      RR(3, top + 3, 4, 3, hair);                // back of the head
+      P(9, top + 4, '#ffffff'); P(10, top + 4, '#1d1d24'); P(10, top + 5, '#1d1d24');
+      P(12, top + 5, sk[1]); P(12, top + 6, sk[2]);   // nose
+      P(10, top + 7, sk[0]);
+      if (look.hairLong) RR(3, top + 3, 3, 8, hair);
+    } else {
+      RR(3, top, 10, 3, hair); RR(5, top, 5, 1, hairHi);
+      P(3, top + 3, hair); P(12, top + 3, hair); P(3, top + 4, hairLo); P(12, top + 4, hairLo);
+      P(5, top + 3, hair); P(9, top + 3, hair);   // fringe
+      P(5, top + 5, '#1d1d24'); P(10, top + 5, '#1d1d24'); P(5, top + 4, '#ffffff'); P(10, top + 4, '#ffffff');
+      P(7, top + 7, sk[0]); P(8, top + 7, sk[0]);
+      if (look.hairLong) { RR(2, top + 2, 1, 8, hair); RR(13, top + 2, 1, 8, hair); }
+    }
+    if (look.cap) {
+      RR(3, top - 1, 10, 3, look.cap); RR(3, top - 1, 10, 1, shade(look.cap, 1.3));
+      if (dir === 'down') RR(2, top + 2, 12, 1, shade(look.cap, 0.7));
+      if (side) RR(10, top + 2, 4, 1, shade(look.cap, 0.7));
+    }
+    if (look.saree && dir !== 'up') { RR(11, top + 9, 2, 7, shLo); }
+    if (look.saree && dir === 'up') { RR(4, top + 7, 8, 3, sh); }
+  }
+
+  function drawBikeUnder(r, dir, frame, X) {
+    var fr = '#2a6fb0', frHi = '#5a9ad6', tyre = '#1b1b20', spoke = '#9a9ea4';
+    var y0 = 2;
+    if (dir === 'left' || dir === 'right') {
+      wheel(r, X(1) + (dir === 'left' ? -3 : 0), 20 + y0, frame, tyre, spoke);
+      wheel(r, X(14) + (dir === 'left' ? -3 : 0), 20 + y0, frame, tyre, spoke);
+      r.line(X(3), 19 + y0, X(12), 19 + y0, fr);
+      r.line(X(6), 14 + y0, X(3), 19 + y0, fr);
+      r.line(X(6), 14 + y0, X(10), 19 + y0, frHi);
+      r.line(X(12), 13 + y0, X(13), 19 + y0, fr);
+      r.px(X(11), 12 + y0, '#333'); r.px(X(12), 12 + y0, '#333'); r.px(X(13), 12 + y0, '#333');
+      r.px(X(5), 13 + y0, '#3a2c22'); r.px(X(6), 13 + y0, '#3a2c22'); r.px(X(7), 13 + y0, '#3a2c22');
+    } else {
+      // seen end-on: a narrow wheel and the handlebar
+      for (var y = 15; y < 25; y++) { r.px(10, y + y0 - 2, tyre); r.px(11, y + y0 - 2, (y + frame) % 3 ? tyre : '#3a3a40'); }
+      r.line(5, 13 + y0, 16, 13 + y0, '#333');
+      r.px(10, 12 + y0, fr); r.px(11, 12 + y0, fr);
+    }
+  }
+
+  function wheel(r, cx, cy, frame, tyre, spoke) {
+    for (var a = 0; a < 24; a++) {
+      var t = a / 24 * Math.PI * 2;
+      r.px(Math.round(cx + Math.cos(t) * 3.5), Math.round(cy + Math.sin(t) * 3.5), tyre);
+    }
+    var t0 = frame * Math.PI / 4;
+    for (var k = 0; k < 2; k++) {
+      var tt = t0 + k * Math.PI / 2;
+      r.px(Math.round(cx + Math.cos(tt) * 2), Math.round(cy + Math.sin(tt) * 2), spoke);
+      r.px(Math.round(cx - Math.cos(tt) * 2), Math.round(cy - Math.sin(tt) * 2), spoke);
+    }
+    r.px(cx, cy, '#cfd3d8');
+  }
+
+  // Lamp post: 10 x 30, base at (5, 28).
+  function lampSprite(on) {
+    return sprite('lamp' + (on ? 1 : 0), 10, 30, function (r) {
+      r.after = function (rr) { rr.ellipseA(6, 28, 3, 1, R.shadow, 0.3); };
+      r.rect(4, 6, 2, 22, '#3a4046'); r.rect(4, 6, 1, 22, '#5c646b');
+      r.rect(3, 26, 4, 2, '#2c3136');
+      r.rect(2, 2, 6, 4, on ? '#ffe7a3' : '#a3acb2');
+      r.rect(2, 2, 6, 1, on ? '#fff6d6' : '#c8d0d5');
+      r.rect(1, 1, 8, 1, '#2c3136'); r.rect(3, 0, 4, 1, '#2c3136');
+      r.rect(2, 6, 6, 1, '#2c3136');
+    });
+  }
+
+  // Notice board: 20 x 20, base at (10, 18).
+  function signSprite() {
+    return sprite('sign', 20, 20, function (r) {
+      r.after = function (rr) { rr.ellipseA(11, 18, 7, 1, R.shadow, 0.3); };
+      var Wd = R.wood;
+      r.rect(4, 9, 2, 9, Wd[1]); r.rect(14, 9, 2, 9, Wd[1]); r.px(4, 9, Wd[3]); r.px(14, 9, Wd[3]);
+      r.rect(2, 2, 16, 9, Wd[2]);
+      r.rect(2, 2, 16, 1, Wd[4]); r.rect(2, 5, 16, 1, Wd[1]); r.rect(2, 8, 16, 1, Wd[1]);
+      r.rect(4, 3, 12, 6, '#efe3c4');
+      r.rect(5, 4, 9, 1, '#9a8a6a'); r.rect(5, 6, 7, 1, '#9a8a6a');
+      r.rect(1, 1, 18, 1, '#4a2e17');
+    });
+  }
+
+  // Parchment: 14 x 14
+  function scrollSprite() {
+    return sprite('scroll', 14, 14, function (r) {
+      r.rect(3, 2, 8, 10, '#f3e8cb'); r.rect(3, 2, 1, 10, '#fff8e6'); r.rect(10, 2, 1, 10, '#d8c79f');
+      r.rect(2, 1, 10, 2, '#c49a52'); r.rect(2, 11, 10, 2, '#c49a52'); r.rect(2, 1, 10, 1, '#e0bb72');
+      r.rect(5, 5, 4, 1, '#8a7650'); r.rect(5, 7, 3, 1, '#8a7650');
+      r.rect(6, 9, 2, 3, '#b0302a');
+    });
+  }
+
+  // The Main Building's tower: 28 x 52, base at (14, 50).
+  function towerSprite() {
+    return sprite('tower', 28, 52, function (r) {
+      var B = BRICK, trim = '#ece2d2';
+      r.rect(4, 12, 20, 38, B[2]);
+      for (var y = 12; y < 50; y += 3) { r.rect(4, y, 20, 1, B[1]); }
+      r.rect(4, 12, 2, 38, B[3]); r.rect(21, 12, 3, 38, B[1]);
+      r.rect(2, 8, 24, 4, trim); r.rect(2, 8, 24, 1, '#ffffff'); r.rect(2, 11, 24, 1, '#b9ad9b');
+      r.rect(6, 2, 16, 6, B[2]); r.rect(6, 2, 16, 1, B[4]); r.rect(5, 1, 18, 1, trim);
+      for (var k = 0; k < 4; k++) { r.rect(8 + k * 4, 3, 2, 4, '#2f4561'); }
+      [16, 26, 36].forEach(function (y2) {
+        r.rect(9, y2, 4, 7, '#2f4561'); r.rect(15, y2, 4, 7, '#2f4561');
+        r.rect(9, y2, 4, 1, '#8fb3cc'); r.rect(15, y2, 4, 1, '#8fb3cc');
+        r.rect(8, y2 + 7, 12, 1, trim);
+      });
+      r.rect(13, 0, 2, 2, '#e0452f');
+      r.rect(3, 46, 22, 4, trim);
+    });
   }
 
   window.ART = {
-    T: T, CHARS: CHARS, S: S, P: P, hash: hash,
-    grass: grass, road: road, path: path, water: water, pitch: pitch, rail: rail, farm: farm, plaza: plaza,
-    building: building, tree: tree, person: person, lamp: lamp, sign: sign, scroll: scroll, cycle: cycle,
-    edgeShade: edgeShade, px: px
+    T: T, CHARS: CHARS, S: S, R: R, hash: hash, Raster: Raster,
+    treeSprite: treeSprite, personSprite: personSprite, lampSprite: lampSprite,
+    signSprite: signSprite, scrollSprite: scrollSprite, towerSprite: towerSprite,
+    WINDOW_LIT: '#ffd77a'
   };
 })();
